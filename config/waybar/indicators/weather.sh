@@ -8,6 +8,11 @@
 # is already underway and its condition matches what's currently
 # reported, the two are merged instead, e.g. "68°F Moderate rain 86%
 # until 9pm".
+#
+# If ~/.config/bunny/weather-override exists (see bunny-update-location),
+# its content is shown as-is and no network call is made at all — used
+# to show a "run ..." hint for an unmapped WiFi network, or nothing when
+# there's no network connection.
 set -Eeuo pipefail
 
 # chance-of-rain/snow (%) at/above which an hour gets flagged
@@ -20,9 +25,17 @@ case "${1-}" in
 	;;
 esac
 
+config_dir=${XDG_CONFIG_HOME:-$HOME/.config}/bunny
+
+override_file="$config_dir/weather-override"
+if [[ -e $override_file ]]; then
+	jq -cRn --arg text "$(cat "$override_file")" '{text: $text}'
+	exit 0
+fi
+
 # printf '<lat>,<lon>\n' > ~/.config/bunny/weather-location
 
-loc_file=${XDG_CONFIG_HOME:-$HOME/.config}/bunny/weather-location
+loc_file="$config_dir/weather-location"
 loc=
 if [[ -r $loc_file ]]; then
 	read -r loc <"$loc_file" || true

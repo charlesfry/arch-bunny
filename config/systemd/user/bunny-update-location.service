@@ -1,0 +1,6 @@
+[Unit]
+Description=Update weather location from connected WiFi SSID
+
+[Service]
+Type=oneshot
+ExecStart=%h/.local/bin/bunny-update-location

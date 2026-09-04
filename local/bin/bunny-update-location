@@ -1,0 +1,125 @@
+#!/bin/bash
+
+# Usage: bunny-update-location
+#        bunny-update-location --add <location>
+#
+# With no args: looks up the currently-connected WiFi SSID in
+# ~/.config/bunny/wifi-locations.json and, if it's listed, writes the
+# mapped value into ~/.config/bunny/weather-location (same file/format
+# weather.sh already reads: a "lat,lon" pair or a plain city name).
+#
+# Otherwise it writes ~/.config/bunny/weather-override, which weather.sh
+# checks before doing any network call: connected to an unmapped SSID
+# shows a hint to run --add in place of the weather; not connected to
+# any network at all shows nothing (blank).
+#
+# --add <location>: registers the currently-connected SSID with the
+# given location string and applies it immediately.
+#
+# wifi-locations.json format:
+#   {
+#     "HomeNetwork": "40.7128,-74.0060",
+#     "Some_Cafe_SSID": "Boston"
+#   }
+#
+# Meant to run on a short-interval systemd --user timer; each invocation
+# is a single cheap D-Bus read, so it's safe to run often.
+set -Eeuo pipefail
+
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/lib/helpers.sh"
+
+config_dir=${XDG_CONFIG_HOME:-$HOME/.config}/bunny
+map_file="$config_dir/wifi-locations.json"
+loc_file="$config_dir/weather-location"
+override_file="$config_dir/weather-override"
+
+current_ssid() {
+	busctl --system -j call net.connman.iwd / org.freedesktop.DBus.ObjectManager GetManagedObjects 2>/dev/null |
+		jq -r '
+      .data[0] as $objs
+      | ($objs | to_entries[] | select(.value["net.connman.iwd.Station"] != null) | .value["net.connman.iwd.Station"]) as $station
+      | if ($station.State.data == "connected") and ($station.ConnectedNetwork.data != null) then
+          $objs[$station.ConnectedNetwork.data]["net.connman.iwd.Network"].Name.data
+        else empty end
+    '
+}
+
+# Removes the override file if present, signaling waybar since that's a
+# visible change (the module was showing override text, not weather).
+clear_override() {
+	if [[ -e $override_file ]]; then
+		rm -f "$override_file"
+		signal_waybar "11"
+	fi
+}
+
+# Writes the override file only if its content is actually changing,
+# signaling waybar when it does.
+write_override() {
+	local content=$1
+	local existing=
+	if [[ -e $override_file ]]; then
+		existing=$(cat "$override_file")
+		[[ $content == "$existing" ]] && return
+	fi
+	mkdir -p "$config_dir"
+	printf '%s' "$content" >"$override_file"
+	signal_waybar "11"
+}
+
+apply_location() {
+	local location=$1
+	clear_override
+	local current=
+	[[ -r $loc_file ]] && read -r current <"$loc_file"
+	[[ $location == "$current" ]] && return
+	mkdir -p "$config_dir"
+	printf '%s\n' "$location" >"$loc_file"
+	signal_waybar "11"
+}
+
+if [[ ${1-} == --add ]]; then
+	location=${2-}
+	if [[ -z $location ]]; then
+		echo "Usage: bunny-update-location --add <location>" >&2
+		exit 1
+	fi
+
+	ssid=$(current_ssid) || ssid=
+	if [[ -z $ssid ]]; then
+		echo "Not connected to a WiFi network" >&2
+		exit 1
+	fi
+
+	existing='{}'
+	[[ -r $map_file ]] && existing=$(cat "$map_file")
+
+	mkdir -p "$config_dir"
+	tmp=$(mktemp "$config_dir/wifi-locations.json.XXXXXX")
+	jq -n --argjson existing "$existing" --arg ssid "$ssid" --arg location "$location" \
+		'$existing + {($ssid): $location}' >"$tmp"
+	mv "$tmp" "$map_file"
+
+	apply_location "$location"
+	exit 0
+fi
+
+ssid=$(current_ssid) || ssid=
+
+if [[ -z $ssid ]]; then
+	write_override ""
+	exit 0
+fi
+
+if [[ -r $map_file ]]; then
+	location=$(jq -r --arg ssid "$ssid" '.[$ssid] // empty' "$map_file")
+else
+	location=
+fi
+
+if [[ -n $location ]]; then
+	apply_location "$location"
+else
+	write_override "run bunny-update-location --add \"<location>\""
+fi

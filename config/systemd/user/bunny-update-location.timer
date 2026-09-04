@@ -1,0 +1,10 @@
+[Unit]
+Description=Periodically update weather location from connected WiFi SSID
+
+[Timer]
+OnBootSec=15s
+OnUnitActiveSec=30s
+AccuracySec=5s
+
+[Install]
+WantedBy=timers.target

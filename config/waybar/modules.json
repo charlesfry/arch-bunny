@@ -92,6 +92,7 @@
   "custom/weather": {
     "exec": "$HOME/.config/waybar/indicators/weather.sh",
     "interval": 600,
+    "signal": 11,
     "return-type": "json"
   }
 }
