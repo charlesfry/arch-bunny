@@ -55,9 +55,8 @@ window#waybar {
 }
 
 #custom-weather {
-  font-size: 12px;
+  font-size: 15px;
   padding: 0 8px;
-  opacity: 0.7;
   color: #98a2b0;
 }
 

@@ -16,7 +16,7 @@
     }
   },
   "clock": {
-    "format": "{0:%H:%M}  <span alpha='55%' foreground='#98a2b0'>{0:%m/%d}</span>",
+    "format": "{0:%H:%M} | {0:%a %b %e} |",
     "format-alt": "{:%Y-%m-%d}",
     "tooltip": false
   },
@@ -92,6 +92,6 @@
   "custom/weather": {
     "exec": "$HOME/.config/waybar/indicators/weather.sh",
     "interval": 600,
-    "tooltip": false
+    "return-type": "json"
   }
 }

@@ -1,7 +1,14 @@
 #!/usr/bin/env bash
 
 # Usage: weather [--help]
+#
+# Shows the current temperature/condition, same as before. When rain or
+# snow is expected later today it's appended, e.g. "68°F Cloudy · Rain
+# 3pm-6pm (60%)"; otherwise nothing extra is shown.
 set -Eeuo pipefail
+
+# chance-of-rain/snow (%) at/above which an hour gets flagged
+threshold=30
 
 case "${1-}" in
 -h | --help)
@@ -18,27 +25,57 @@ if [[ -r $loc_file ]]; then
 	read -r loc <"$loc_file" || true
 fi
 
-out=
+current=
 for attempt in 1 2 3 4 5 6; do
 	if ((attempt > 1)); then sleep 5; fi
-	if out=$(curl -fsS --max-time 5 "https://wttr.in/${loc}?format=%t+%C" 2>/dev/null); then
+	if current=$(curl -fsS --max-time 5 "https://wttr.in/${loc}?format=%t+%C" 2>/dev/null); then
 		break
 	fi
-	out=
+	current=
 done
 
-if [[ -z $out ]]; then
-	printf 'weather n/a\n'
-	exit 0
-fi
-
-if [[ ! $out =~ ^[[:space:]]*[+-]?[0-9]+° ]]; then
-	printf 'weather n/a\n'
+if [[ -z $current ]] || [[ ! $current =~ ^[[:space:]]*[+-]?[0-9]+° ]]; then
+	printf '{"text":"weather n/a"}\n'
 	exit 0
 fi
 
 # `+77°F` reads as an instruction rather than a temperature, and wttr.in pads its
 # reply with a trailing space the stylesheet's own padding then doubles.
-out=${out#"${out%%[![:space:]]*}"}
-out=${out%"${out##*[![:space:]]}"}
-printf '%s\n' "${out#+}"
+current=${current#"${current%%[![:space:]]*}"}
+current=${current%"${current##*[![:space:]]}"}
+current=${current#+}
+
+# Best-effort forecast check: a single attempt, and we fall back to the
+# current-conditions text alone if it fails.
+json=$(curl -fsS --max-time 5 "https://wttr.in/${loc}?format=j1" 2>/dev/null) || json=
+
+if [[ -z $json ]]; then
+	printf '{"text":"%s"}\n' "$current"
+	exit 0
+fi
+
+jq -c --arg current "$current" --argjson now "$(date +%-H)" --argjson threshold "$threshold" '
+  def to12h: (. % 24) as $h
+    | if $h == 0 then "12am"
+      elif $h < 12 then "\($h)am"
+      elif $h == 12 then "12pm"
+      else "\($h - 12)pm"
+      end;
+  def clean: gsub("^\\s+|\\s+$"; "");
+
+  .weather[0].hourly
+  | map(. + {risk: ([(.chanceofrain // "0" | tonumber), (.chanceofsnow // "0" | tonumber)] | max)})
+  | map(select((.time | tonumber / 100) >= $now))
+  | map(select(.risk >= $threshold)) as $hits
+  | if ($hits | length) == 0 then
+      {text: $current}
+    else
+      ($hits | max_by(.risk)) as $peak
+      | ($hits[0].time | tonumber / 100 | floor) as $start
+      | (($hits[-1].time | tonumber / 100 | floor) + 3) as $end
+      | {
+          text: "\($current) | \($peak.risk)% \($peak.weatherDesc[0].value | clean) \($start|to12h)-\($end|to12h)",
+          tooltip: ($hits | map("\(.time | tonumber / 100 | floor | to12h)  \(.weatherDesc[0].value | clean)  \(.risk)%") | join("\n"))
+        }
+    end
+' <<<"$json" || printf '{"text":"%s"}\n' "$current"
