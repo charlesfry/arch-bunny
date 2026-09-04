@@ -16,6 +16,13 @@ vim.keymap.set("n", ";L", "<Esc>")
 vim.keymap.set("i", ";a", "->")
 vim.keymap.set("i", ";A", "->")
 
+-- Math - increment/decrement
+vim.keymap.set("n", "+", "<C-a>", { desc = "Increment number" })
+vim.keymap.set("n", "-", "<C-x>", { desc = "Decrement number" })
+
+-- Select all
+vim.keymap.set("n", "<C-a>", "gg<S-v>G", { desc = "Select all" })
+
 -- Misc
 -- <leader>ts is used by onedark to toggle the theme
 vim.keymap.set("n", "<leader>dl", "d$")

@@ -12,6 +12,12 @@ window-rule {
 }
 
 window-rule {
+    match app-id="^discord$"
+    open-maximized true
+    open-floating false
+}
+
+window-rule {
     match app-id="^Spotify$"
     open-maximized true
     open-floating false
@@ -33,9 +39,6 @@ window-rule {
     open-maximized true
 }
 
-// Bunny: maximize the Mod+Shift+N nvim launch. Every kitty window shares app-id
-// "kitty", so the spawn below pins the title to "Neovim" and locks it
-// (dynamic_title=no) so nvim cannot overwrite it, and this rule matches that.
 window-rule {
     match app-id="^kitty$" title="^Neovim$"
     open-maximized true

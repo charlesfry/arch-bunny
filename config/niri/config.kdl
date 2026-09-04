@@ -4,12 +4,12 @@ include optional=true "window-rules.laptop.kdl"
 include "animations.kdl"
 
 switch-events {
-  lid-close { spawn "bunny-cmd-shutdown"; }
+  lid-close { spawn "systemctl suspend"; }
 }
 
 spawn-at-startup "uwsm" "finalize"
 
-screenshot-path "~/Pictures/Screenshots/Screenshot %Y-%m-%d %H-%M-%S.png"
+screenshot-path "~/Pictures/Screenshots/Screenshot__%Y-%m-%d_%H-%M-%S.png"
 prefer-no-csd
 
 hotkey-overlay {
@@ -43,7 +43,7 @@ input {
 
 // Cursor
 cursor {
-  xcursor-size 18
+  xcursor-size 27
   hide-when-typing
 }
 
