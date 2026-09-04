@@ -3,8 +3,11 @@
 # Usage: weather [--help]
 #
 # Shows the current temperature/condition, same as before. When rain or
-# snow is expected later today it's appended, e.g. "68°F Cloudy · Rain
-# 3pm-6pm (60%)"; otherwise nothing extra is shown.
+# snow is expected later today it's appended, e.g. "68°F Cloudy | Rain
+# 60% 3pm-6pm"; otherwise nothing extra is shown. If the risky stretch
+# is already underway and its condition matches what's currently
+# reported, the two are merged instead, e.g. "68°F Moderate rain 86%
+# until 9pm".
 set -Eeuo pipefail
 
 # chance-of-rain/snow (%) at/above which an hour gets flagged
@@ -45,6 +48,10 @@ current=${current#"${current%%[![:space:]]*}"}
 current=${current%"${current##*[![:space:]]}"}
 current=${current#+}
 
+# The condition text alone (temp stripped), used to detect whether the
+# currently-reported condition is the same one the forecast is warning about.
+current_desc=$(sed -E 's/^-?[0-9]+°[A-Za-z]+[[:space:]]*//' <<<"$current")
+
 # Best-effort forecast check: a single attempt, and we fall back to the
 # current-conditions text alone if it fails.
 json=$(curl -fsS --max-time 5 "https://wttr.in/${loc}?format=j1" 2>/dev/null) || json=
@@ -54,7 +61,7 @@ if [[ -z $json ]]; then
 	exit 0
 fi
 
-jq -c --arg current "$current" --argjson now "$(date +%-H)" --argjson threshold "$threshold" '
+jq -c --arg current "$current" --arg current_desc "$current_desc" --argjson now "$(date +%-H)" --argjson threshold "$threshold" '
   def to12h: (. % 24) as $h
     | if $h == 0 then "12am"
       elif $h < 12 then "\($h)am"
@@ -65,7 +72,7 @@ jq -c --arg current "$current" --argjson now "$(date +%-H)" --argjson threshold 
 
   .weather[0].hourly
   | map(. + {risk: ([(.chanceofrain // "0" | tonumber), (.chanceofsnow // "0" | tonumber)] | max)})
-  | map(select((.time | tonumber / 100) >= $now))
+  | map(select((.time | tonumber / 100 | floor) + 3 > $now))
   | map(select(.risk >= $threshold)) as $hits
   | if ($hits | length) == 0 then
       {text: $current}
@@ -73,8 +80,14 @@ jq -c --arg current "$current" --argjson now "$(date +%-H)" --argjson threshold 
       ($hits | max_by(.risk)) as $peak
       | ($hits[0].time | tonumber / 100 | floor) as $start
       | (($hits[-1].time | tonumber / 100 | floor) + 3) as $end
+      | (($now >= $start) and ($now < $end)
+         and (($peak.weatherDesc[0].value | clean | ascii_downcase) == ($current_desc | clean | ascii_downcase))) as $ongoing_match
       | {
-          text: "\($current) | \($peak.risk)% \($peak.weatherDesc[0].value | clean) \($start|to12h)-\($end|to12h)",
+          text: (if $ongoing_match then
+                   "\($current) \($peak.risk)% until \($end|to12h)"
+                 else
+                   "\($current) | \($peak.weatherDesc[0].value | clean) \($peak.risk)% \($start|to12h)-\($end|to12h)"
+                 end),
           tooltip: ($hits | map("\(.time | tonumber / 100 | floor | to12h)  \(.weatherDesc[0].value | clean)  \(.risk)%") | join("\n"))
         }
     end
