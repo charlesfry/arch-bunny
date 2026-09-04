@@ -16,7 +16,7 @@
     }
   },
   "clock": {
-    "format": "{0:%H:%M} | {0:%a %b %e} |",
+    "format": "{0:%H:%M} | {0:%a %b %d} |",
     "format-alt": "{:%Y-%m-%d}",
     "tooltip": false
   },
