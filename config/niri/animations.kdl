@@ -1,6 +1,7 @@
 // Animation Settings
 animations {
-  slowdown 0.6
+  // off
+  slowdown 0.5
 
   window-open {
     off

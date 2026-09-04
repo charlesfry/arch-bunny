@@ -6,3 +6,6 @@ viacoffee/
 user_configuration.json
 user_creds.json
 /poop
+.claude
+.personal.bashrc
+
