@@ -64,11 +64,23 @@ log "Limine cmdline: $CMDLINE"
 
 # The managed arguments are appended by the template below. Remove existing
 # occurrences first so repeated installer runs do not grow the command line.
-for managed_arg in quiet splash nowatchdog plymouth.ignore-serial-consoles; do
+framework_audio_blacklist=module_blacklist=snd_acp70,snd_acp_pci
+for managed_arg in quiet splash nowatchdog plymouth.ignore-serial-consoles "$framework_audio_blacklist"; do
   escaped_arg=$(printf '%s\n' "$managed_arg" | sed 's/[][\\/.^$*+?{}()|]/\\&/g')
   CMDLINE=$(printf '%s\n' "$CMDLINE" | sed -E \
     "s/(^|[[:space:]])${escaped_arg}([[:space:]]|$)/\\1\\2/g; s/[[:space:]]+/ /g; s/^ //; s/ $//")
 done
+
+# Framework Laptop 13 AMD Ryzen AI 300 firmware exposes an unwired ACP mic that
+# confuses ALSA's Capture Source mux into reverting to a dead capture path.
+# https://github.com/FrameworkComputer/SoftwareFirmwareIssueTracker/issues/166
+system_vendor=$(cat /sys/class/dmi/id/sys_vendor 2>/dev/null || true)
+product_name=$(cat /sys/class/dmi/id/product_name 2>/dev/null || true)
+if [[ $system_vendor == Framework &&
+      $product_name == "Laptop 13 (AMD Ryzen AI 300 Series)" ]]; then
+  CMDLINE+=" $framework_audio_blacklist"
+  log "Blacklisting the phantom Framework ACP microphone from the kernel command line"
+fi
 
 CMDLINE_ESCAPED=$(printf '%s\n' "$CMDLINE" | sed 's/[&\\]/\\&/g')
 staged_limine_defaults=$(mktemp)
@@ -163,15 +175,6 @@ sudo sed -i 's/^FREE_LIMIT="0.2"/FREE_LIMIT="0.3"/' /etc/snapper/configs/{root,h
 step "Blacklisting hardware watchdog modules"
 sudo mkdir -p /etc/modprobe.d
 sudo cp "$BUNNY_INSTALL_DEFAULTS_PATH/modprobe/nowatchdog.conf" /etc/modprobe.d/nowatchdog.conf
-
-# Framework Laptop 13 AMD Ryzen AI 300 firmware exposes an unwired ACP mic that
-# confuses ALSA's Capture Source mux into reverting to a dead capture path.
-# https://github.com/FrameworkComputer/SoftwareFirmwareIssueTracker/issues/166
-if [[ "$(cat /sys/class/dmi/id/sys_vendor 2>/dev/null)" == "Framework" &&
-      "$(cat /sys/class/dmi/id/product_name 2>/dev/null)" == "Laptop 13 (AMD Ryzen AI 300 Series)" ]]; then
-  step "Blacklisting the phantom Framework ACP mic module"
-  sudo cp "$BUNNY_INSTALL_DEFAULTS_PATH/modprobe/framework-13-ai-300-audio.conf" /etc/modprobe.d/framework-13-ai-300-audio.conf
-fi
 
 step "Configuring the Plymouth theme"
 plymouth_theme_dir=/usr/share/plymouth/themes/bunny
@@ -311,3 +314,4 @@ done
 success "Generated Limine configuration committed"
 
 remove_pacman_generation_override
+
