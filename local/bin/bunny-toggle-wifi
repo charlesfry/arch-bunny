@@ -1,0 +1,10 @@
+#!/bin/bash
+
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/lib/helpers.sh"
+
+if rfkill list wifi | grep -q "Soft blocked: yes"; then
+  rfkill unblock wifi
+else
+  rfkill block wifi
+fi

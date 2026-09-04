@@ -1,0 +1,12 @@
+#!/bin/bash
+
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/lib/helpers.sh"
+
+if makoctl mode | grep -q '^dnd$'; then
+  makoctl mode -r dnd
+else
+  makoctl mode -s dnd
+fi
+
+signal_waybar "8"

@@ -1,0 +1,70 @@
+#!/bin/bash
+set -euo pipefail
+
+GREEN='\e[32m'
+BOLD='\e[1m'
+RESET='\e[0m'
+
+human_size() {
+  local bytes="$1"
+  if [[ -z "$bytes" || "$bytes" == "null" ]]; then
+    echo "-"
+  else
+    numfmt --to=iec-i --suffix=B --format='%.1f' "$bytes"
+  fi
+}
+
+echo -e "${GREEN}Snapshot disk usage${RESET}"
+echo
+
+raw="$(sudo snapper --jsonout list --all-configs \
+  --columns config,number,date,description,used-space,cleanup)"
+
+# Snapshot 0 in every config is the live filesystem ("current"), not an
+# actual snapshot, and always reports a null size — exclude it.
+rows="$(jq -r '
+  [.. | objects | select(has("number") and has("config"))]
+  | map(select(.number != 0))
+  | sort_by(.config, .number)
+  | .[]
+  | [
+      .config,
+      (.number | tostring),
+      (.date // "-"),
+      (.cleanup // "" | if . == "" then "-" else . end),
+      (.["used-space"] | tostring),
+      (.description // "" | if . == "" then "(no description)" else . end)
+    ]
+  | @tsv
+' <<<"$raw")"
+
+printf "%-6s %4s  %-19s %-8s %10s  %s\n" CONFIG NUM DATE CLEANUP SIZE DESCRIPTION
+if [[ -n "$rows" ]]; then
+  while IFS=$'\t' read -r config number date cleanup used_space description; do
+    printf "%-6s %4s  %-19s %-8s %10s  %s\n" \
+      "$config" "$number" "$date" "$cleanup" "$(human_size "$used_space")" "$description"
+  done <<<"$rows"
+fi
+
+echo
+
+jq -r '
+  [.. | objects | select(has("number") and has("config"))]
+  | map(select(.number != 0))
+  | group_by(.config)
+  | map({config: .[0].config, total: (map(.["used-space"] // 0) | add)})
+  | .[]
+  | [.config, (.total | tostring)]
+  | @tsv
+' <<<"$raw" | while IFS=$'\t' read -r config total; do
+  printf "%-6s total: %s\n" "$config" "$(human_size "$total")"
+done
+
+grand_total="$(jq -r '
+  [.. | objects | select(has("number") and has("config"))]
+  | map(select(.number != 0))
+  | map(.["used-space"] // 0)
+  | add // 0
+' <<<"$raw")"
+
+printf "${BOLD}Grand total: %s${RESET}\n" "$(human_size "$grand_total")"

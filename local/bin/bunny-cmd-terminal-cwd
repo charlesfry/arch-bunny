@@ -1,0 +1,25 @@
+#!/bin/bash
+
+# Returns the current working directory of the active terminal window,
+# so a new terminal window can be started in the same directory.
+
+terminal_pid=$(niri msg focused-window | awk '/PID:/ {print $2}')
+shell_pid=$(pgrep -P "$terminal_pid" | tail -n1)
+
+if [[ -n $shell_pid ]]; then
+  # Match on tty and use the focused session's base dir (where it was created,
+  # e.g. via tmux-sessionizer's `-c`), not wherever a pane later cd'd to.
+  tty=$(ps -o tty= -p "$shell_pid" | tr -d ' ')
+  cwd=$(tmux list-clients -F '#{client_tty} #{session_path}' 2>/dev/null \
+        | awk -v t="/dev/$tty" '$1==t {print $2; exit}')
+
+  # Otherwise fall back to the shell's own cwd.
+  if [[ -z $cwd ]]; then
+    shell=$(readlink -f "/proc/$shell_pid/exe" 2>/dev/null)
+    grep -qs "$shell" /etc/shells && cwd=$(readlink -f "/proc/$shell_pid/cwd" 2>/dev/null)
+  fi
+
+  [[ -d $cwd ]] && echo "$cwd" && exit 0
+fi
+
+echo "$HOME"

@@ -1,0 +1,8 @@
+viacoffee/
+
+# Host-local harness overrides (tests/vm/config.local).
+*.local
+
+user_configuration.json
+user_creds.json
+/poop

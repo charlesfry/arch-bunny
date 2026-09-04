@@ -1,0 +1,2 @@
+# `ansi` uses only the 16 terminal slots, so bat inherits the alacritty palette
+--theme="ansi"

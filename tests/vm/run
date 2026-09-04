@@ -1,0 +1,697 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+export LC_ALL=C
+
+script_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
+config_file=${VM_TEST_CONFIG:-$script_dir/config.local}
+
+if [[ -f $config_file ]]; then
+  # shellcheck source=/dev/null
+  source "$config_file"
+fi
+
+VM_CONNECT_URI=${VM_CONNECT_URI:-qemu:///system}
+VM_BASE_NAME=${VM_BASE_NAME:-arch-bunny-arch-base}
+VM_NAME_PREFIX=${VM_NAME_PREFIX:-arch-bunny-test-}
+VM_NETWORK=${VM_NETWORK:-default}
+VM_RESULTS_DIR=${VM_RESULTS_DIR:-$HOME/VMs/arch-bunny/test-results}
+VM_WAIT_TIMEOUT=${VM_WAIT_TIMEOUT:-120}
+VM_SSH_USER=${VM_SSH_USER:-}
+VM_SSH_KEY=${VM_SSH_KEY:-$HOME/.local/state/arch-bunny-vm/id_ed25519}
+VM_SSH_KNOWN_HOSTS=${VM_SSH_KNOWN_HOSTS:-$HOME/.local/state/arch-bunny-vm/known_hosts}
+VM_BOOTSTRAP_URL=${VM_BOOTSTRAP_URL:-https://raw.githubusercontent.com/charlesfry/arch-bunny/master/bootstrap.sh}
+VM_INSTALL_BRANCH=${VM_INSTALL_BRANCH:-}
+
+usage() {
+  cat <<EOF
+Usage: ${0##*/} <command> [arguments]
+
+Manage disposable libvirt clones of $VM_BASE_NAME.
+
+Commands:
+  create CASE [--start]      Create a full clone
+  prepare CASE               Create and start a full clone
+  start CASE                 Start an existing clone
+  stop CASE                  Request a clean shutdown and wait
+  status CASE                Show state, storage, NVRAM, and interfaces
+  ip CASE                    Print the leased IPv4 address
+  wait-ip CASE [SECONDS]     Wait for a leased IPv4 address
+  keygen                     Generate the test-only SSH key
+  ssh-setup                  Print setup commands to paste into the automation VM
+  wait-ssh CASE [SECONDS]    Wait for SSH access
+  ssh CASE [COMMAND]         Open a shell or run one remote command
+  bootstrap CASE [BRANCH]    Run the documented bootstrap command over SSH
+  rerun CASE [BRANCH]        Update the clone and rerun install.sh over SSH
+  verify CASE [LABEL]        Run read-only post-install verification
+  collect CASE [LABEL]       Collect guest logs and system state
+  firewall-cleanup CASE      Remove the test-only SSH firewall rule
+  view CASE                  Open the graphical console in virt-manager
+  screenshot CASE [FILE]     Save a PPM screenshot
+  remove CASE [--force]      Remove a clone and all of its storage
+  list                       List managed VMs
+  help                       Show this help
+
+CASE is appended to $VM_NAME_PREFIX. For example, "fresh" maps to
+"${VM_NAME_PREFIX}fresh".
+
+Configuration: $config_file
+EOF
+}
+
+die() {
+  printf 'Error: %s\n' "$*" >&2
+  exit 1
+}
+
+require_command() {
+  command -v "$1" >/dev/null 2>&1 || die "required command not found: $1"
+}
+
+virsh_cmd() {
+  virsh --connect "$VM_CONNECT_URI" "$@"
+}
+
+case_vm_name() {
+  local case_name=${1:-}
+
+  [[ $case_name =~ ^[a-zA-Z0-9][a-zA-Z0-9._-]*$ ]] ||
+    die "invalid case name: ${case_name:-<empty>}"
+
+  printf '%s%s\n' "$VM_NAME_PREFIX" "$case_name"
+}
+
+domain_exists() {
+  virsh_cmd dominfo "$1" >/dev/null 2>&1
+}
+
+require_domain() {
+  domain_exists "$1" || die "VM does not exist: $1"
+}
+
+domain_state() {
+  virsh_cmd domstate "$1" | tr -d '\r'
+}
+
+require_powered_off_base() {
+  require_domain "$VM_BASE_NAME"
+
+  local state
+  state=$(domain_state "$VM_BASE_NAME")
+  [[ $state == "shut off" ]] ||
+    die "baseline VM must be powered off (current state: $state)"
+}
+
+leased_ipv4s() {
+  local vm=$1
+  virsh_cmd domifaddr "$vm" --source lease 2>/dev/null |
+    awk '$3 == "ipv4" { sub(/\/.*/, "", $4); if (!seen[$4]++) print $4 }'
+}
+
+leased_ipv4() {
+  leased_ipv4s "$1" | tail -n 1
+}
+
+require_ssh_user() {
+  [[ -n $VM_SSH_USER ]] ||
+    die "VM_SSH_USER is not configured; set it in $config_file"
+}
+
+ensure_ssh_key() {
+  require_command ssh-keygen
+
+  if [[ -f $VM_SSH_KEY && -f $VM_SSH_KEY.pub ]]; then
+    return
+  fi
+  [[ ! -e $VM_SSH_KEY && ! -e $VM_SSH_KEY.pub ]] ||
+    die "incomplete SSH key pair at $VM_SSH_KEY"
+
+  mkdir -p "$(dirname -- "$VM_SSH_KEY")"
+  chmod 700 "$(dirname -- "$VM_SSH_KEY")"
+  ssh-keygen -q -t ed25519 -N '' -C arch-bunny-vm-tests -f "$VM_SSH_KEY"
+  chmod 600 "$VM_SSH_KEY"
+  chmod 644 "$VM_SSH_KEY.pub"
+  printf 'Generated test SSH key: %s\n' "$VM_SSH_KEY"
+}
+
+ssh_options() {
+  local vm=$1
+  local connect_timeout=${2:-5}
+  printf '%s\0' \
+    -o BatchMode=yes \
+    -o "ConnectTimeout=$connect_timeout" \
+    -o IdentitiesOnly=yes \
+    -o StrictHostKeyChecking=accept-new \
+    -o "UserKnownHostsFile=$VM_SSH_KNOWN_HOSTS" \
+    -o "HostKeyAlias=$vm" \
+    -i "$VM_SSH_KEY"
+}
+
+reachable_ssh_ip() {
+  local vm=$1
+  local ip
+  local -a probe_options=()
+  mapfile -d '' -t probe_options < <(ssh_options "$vm" 1)
+
+  while IFS= read -r ip; do
+    if ssh -n "${probe_options[@]}" "$VM_SSH_USER@$ip" true >/dev/null 2>&1; then
+      printf '%s\n' "$ip"
+      return 0
+    fi
+  done < <(leased_ipv4s "$vm")
+  return 1
+}
+
+ssh_vm() {
+  local vm=$1
+  local tty=$2
+  shift 2
+
+  require_command ssh
+  require_ssh_user
+  [[ -f $VM_SSH_KEY ]] || die "SSH key not found; run ${0##*/} keygen"
+
+  mkdir -p "$(dirname -- "$VM_SSH_KNOWN_HOSTS")"
+
+  local ip
+  ip=$(reachable_ssh_ip "$vm") ||
+    die "SSH is not reachable at any leased IPv4 address for $vm"
+
+  local -a options=()
+  mapfile -d '' -t options < <(ssh_options "$vm")
+  if [[ $tty == yes ]]; then
+    options+=(-tt)
+  fi
+
+  # shellcheck disable=SC2029 # command strings are intentionally evaluated in the guest
+  ssh "${options[@]}" "$VM_SSH_USER@$ip" "$@"
+}
+
+create_clone() {
+  local case_name=${1:-}
+  local start_after=${2:-}
+  local vm
+  vm=$(case_vm_name "$case_name")
+
+  [[ -z $start_after || $start_after == "--start" ]] ||
+    die "unknown create option: $start_after"
+
+  require_command virt-clone
+  require_powered_off_base
+  domain_exists "$vm" && die "VM already exists: $vm"
+
+  printf 'Creating full clone %s from %s...\n' "$vm" "$VM_BASE_NAME"
+  virt-clone \
+    --connect "$VM_CONNECT_URI" \
+    --original "$VM_BASE_NAME" \
+    --name "$vm" \
+    --auto-clone
+
+  printf '\nClone storage:\n'
+  virsh_cmd domblklist "$vm"
+  printf '\nClone NVRAM:\n'
+  virsh_cmd dumpxml "$vm" |
+    awk '/<nvram[ >]/{print; found=1} END {if (!found) print "  (none)"}'
+
+  if [[ $start_after == "--start" ]]; then
+    start_clone "$case_name"
+  else
+    printf '\nCreated %s in the powered-off state.\n' "$vm"
+  fi
+}
+
+start_clone() {
+  local vm
+  vm=$(case_vm_name "${1:-}")
+  require_domain "$vm"
+
+  local state
+  state=$(domain_state "$vm")
+  if [[ $state == "running" ]]; then
+    printf '%s is already running.\n' "$vm"
+    return
+  fi
+  [[ $state == "shut off" ]] || die "cannot start $vm while state is: $state"
+
+  virsh_cmd start "$vm"
+}
+
+stop_clone() {
+  local vm
+  vm=$(case_vm_name "${1:-}")
+  require_domain "$vm"
+
+  local state
+  state=$(domain_state "$vm")
+  if [[ $state == "shut off" ]]; then
+    printf '%s is already powered off.\n' "$vm"
+    return
+  fi
+
+  virsh_cmd shutdown "$vm"
+  printf 'Waiting up to %s seconds for %s to stop' "$VM_WAIT_TIMEOUT" "$vm"
+
+  local elapsed
+  for ((elapsed = 0; elapsed < VM_WAIT_TIMEOUT; elapsed++)); do
+    if [[ $(domain_state "$vm") == "shut off" ]]; then
+      printf '\n%s is powered off.\n' "$vm"
+      return
+    fi
+    printf '.'
+    sleep 1
+  done
+
+  printf '\n' >&2
+  die "$vm did not stop; inspect it before using remove --force"
+}
+
+show_status() {
+  local vm
+  vm=$(case_vm_name "${1:-}")
+  require_domain "$vm"
+
+  printf 'VM: %s\nState: %s\n\n' "$vm" "$(domain_state "$vm")"
+  printf 'Storage:\n'
+  virsh_cmd domblklist "$vm"
+  printf '\nInterfaces:\n'
+  virsh_cmd domiflist "$vm"
+  printf '\nAddresses:\n'
+  virsh_cmd domifaddr "$vm" --source lease || true
+  printf '\nNVRAM:\n'
+  virsh_cmd dumpxml "$vm" |
+    awk '/<nvram[ >]/{print; found=1} END {if (!found) print "  (none)"}'
+}
+
+print_ip() {
+  local vm ip
+  vm=$(case_vm_name "${1:-}")
+  require_domain "$vm"
+  ip=$(leased_ipv4 "$vm")
+  [[ -n $ip ]] || die "no leased IPv4 address found for $vm"
+  printf '%s\n' "$ip"
+}
+
+wait_for_ip() {
+  local vm timeout ip elapsed
+  vm=$(case_vm_name "${1:-}")
+  timeout=${2:-$VM_WAIT_TIMEOUT}
+  require_domain "$vm"
+  [[ $timeout =~ ^[1-9][0-9]*$ ]] || die "timeout must be a positive integer"
+
+  printf 'Waiting up to %s seconds for %s to obtain an IPv4 address' "$timeout" "$vm" >&2
+  for ((elapsed = 0; elapsed < timeout; elapsed++)); do
+    ip=$(leased_ipv4 "$vm")
+    if [[ -n $ip ]]; then
+      printf '\n' >&2
+      printf '%s\n' "$ip"
+      return
+    fi
+    printf '.' >&2
+    sleep 1
+  done
+
+  printf '\n' >&2
+  die "no leased IPv4 address found for $vm"
+}
+
+generate_ssh_key() {
+  ensure_ssh_key
+  printf '%s\n' "$(<"$VM_SSH_KEY.pub")"
+}
+
+print_ssh_setup() {
+  ensure_ssh_key
+
+  local public_key
+  public_key=$(<"$VM_SSH_KEY.pub")
+
+  cat <<'EOF'
+Run the following commands as the normal user inside the automation-base VM:
+
+EOF
+  printf 'public_key=%q\n' "$public_key"
+  cat <<'EOF'
+sudo pacman -S --needed curl openssh
+install -d -m 700 "$HOME/.ssh"
+touch "$HOME/.ssh/authorized_keys"
+chmod 600 "$HOME/.ssh/authorized_keys"
+grep -qxF "$public_key" "$HOME/.ssh/authorized_keys" || printf '%s\n' "$public_key" >> "$HOME/.ssh/authorized_keys"
+printf '%s\n' 'SSH-enabled arch-bunny test VM' | sudo tee /etc/bunny-test-vm >/dev/null
+sudo systemctl enable --now sshd.service
+
+Then test from the host with:
+  ./tests/vm/run wait-ssh automation-base
+EOF
+}
+
+wait_for_ssh() {
+  local vm timeout deadline ip
+  vm=$(case_vm_name "${1:-}")
+  timeout=${2:-$VM_WAIT_TIMEOUT}
+  require_domain "$vm"
+  require_command ssh
+  require_ssh_user
+  [[ -f $VM_SSH_KEY ]] || die "SSH key not found; run ${0##*/} keygen"
+  [[ $timeout =~ ^[1-9][0-9]*$ ]] || die "timeout must be a positive integer"
+
+  mkdir -p "$(dirname -- "$VM_SSH_KNOWN_HOSTS")"
+
+  printf 'Waiting up to %s seconds for SSH on %s' "$timeout" "$vm" >&2
+  deadline=$((SECONDS + timeout))
+  while ((SECONDS < deadline)); do
+    if ip=$(reachable_ssh_ip "$vm"); then
+      printf '\nSSH is ready at %s@%s.\n' "$VM_SSH_USER" "$ip"
+      return
+    fi
+    printf '.' >&2
+    sleep 1
+  done
+
+  printf '\n' >&2
+  die "SSH did not become ready for $vm"
+}
+
+open_ssh() {
+  local vm
+  vm=$(case_vm_name "${1:-}")
+  require_domain "$vm"
+  shift || true
+
+  if (($#)); then
+    ssh_vm "$vm" no "$1"
+  else
+    ssh_vm "$vm" yes
+  fi
+}
+
+run_bootstrap() {
+  local case_name=${1:-}
+  local branch=${2:-$VM_INSTALL_BRANCH}
+  local vm remote_command transcript ssh_status
+  vm=$(case_vm_name "$case_name")
+  require_domain "$vm"
+
+  if [[ -n $branch ]]; then
+    [[ $branch =~ ^[a-zA-Z0-9._/-]+$ ]] || die "invalid branch name: $branch"
+    printf -v remote_command 'bash <(curl -fsSL %q) -b %q' "$VM_BOOTSTRAP_URL" "$branch"
+  else
+    printf -v remote_command 'bash <(curl -fsSL %q)' "$VM_BOOTSTRAP_URL"
+  fi
+
+  transcript=$VM_RESULTS_DIR/$case_name/bootstrap-$(date '+%Y%m%d-%H%M%S').log
+  mkdir -p "$(dirname -- "$transcript")"
+
+  if [[ -n $branch ]]; then
+    printf 'Running branch %s in %s as %s.\n' "$branch" "$vm" "$VM_SSH_USER"
+  else
+    printf 'Running the default repository branch in %s as %s.\n' "$vm" "$VM_SSH_USER"
+  fi
+  if ssh_vm "$vm" yes "$remote_command" 2>&1 | tee "$transcript"; then
+    ssh_status=0
+  else
+    ssh_status=${PIPESTATUS[0]}
+  fi
+  printf 'Bootstrap transcript: %s\n' "$transcript"
+  return "$ssh_status"
+}
+
+rerun_installer() {
+  local case_name=${1:-}
+  local branch=${2:-$VM_INSTALL_BRANCH}
+  local vm remote_command transcript ssh_status
+  vm=$(case_vm_name "$case_name")
+  require_domain "$vm"
+  [[ -n $branch ]] || die "no installer branch configured"
+  [[ $branch =~ ^[a-zA-Z0-9._/-]+$ ]] || die "invalid branch name: $branch"
+
+  # shellcheck disable=SC2016 # HOME must expand in the guest
+  printf -v remote_command \
+    'cd "$HOME/arch-bunny" && git fetch origin %q && git checkout %q && git merge --ff-only %q && bash install.sh' \
+    "$branch" "$branch" "origin/$branch"
+
+  transcript=$VM_RESULTS_DIR/$case_name/rerun-$(date '+%Y%m%d-%H%M%S').log
+  mkdir -p "$(dirname -- "$transcript")"
+
+  printf 'Updating and rerunning branch %s in %s as %s.\n' \
+    "$branch" "$vm" "$VM_SSH_USER"
+  if ssh_vm "$vm" yes "$remote_command" 2>&1 | tee "$transcript"; then
+    ssh_status=0
+  else
+    ssh_status=${PIPESTATUS[0]}
+  fi
+  printf 'Rerun transcript: %s\n' "$transcript"
+  return "$ssh_status"
+}
+
+verify_install() {
+  local case_name=${1:-}
+  local label=${2:-$(date '+%Y%m%d-%H%M%S')}
+  local vm transcript ssh_status remote_command
+  vm=$(case_vm_name "$case_name")
+  require_domain "$vm"
+  [[ $label =~ ^[a-zA-Z0-9][a-zA-Z0-9._-]*$ ]] || die "invalid verification label: $label"
+
+  # shellcheck disable=SC2016 # HOME must expand in the guest
+  remote_command='cd "$HOME/arch-bunny" && bash install/verify.sh'
+  transcript=$VM_RESULTS_DIR/$case_name/verify-$label.log
+  mkdir -p "$(dirname -- "$transcript")"
+
+  printf 'Running read-only verification in %s as %s.\n' "$vm" "$VM_SSH_USER"
+  if ssh_vm "$vm" yes "$remote_command" 2>&1 | tee "$transcript"; then
+    ssh_status=0
+  else
+    ssh_status=${PIPESTATUS[0]}
+  fi
+  printf 'Verification transcript: %s\n' "$transcript"
+  return "$ssh_status"
+}
+
+capture_remote() {
+  local vm=$1
+  local output=$2
+  local command=$3
+
+  if ssh_vm "$vm" no "$command" > "$output" 2>&1; then
+    return
+  fi
+  printf 'Warning: remote collection command failed; see %s\n' "$output" >&2
+}
+
+cleanup_test_firewall() {
+  local case_name=${1:-}
+  local vm remote_command transcript ssh_status
+  vm=$(case_vm_name "$case_name")
+  require_domain "$vm"
+
+  # The installer creates this source-restricted rule only for marked test VMs.
+  # Remove it as the final guest-side action because later SSH connections may
+  # no longer be possible.
+  # shellcheck disable=SC2016 # Variables expand in the guest shell.
+  remote_command='set -e; ssh_client_ip=${SSH_CONNECTION%% *}; if sudo ufw status | grep -Fq allow-bunny-test-host-ssh; then sudo ufw --force delete allow from "$ssh_client_ip" to any port 22 proto tcp; fi; ! sudo ufw status | grep -Fq allow-bunny-test-host-ssh'
+  transcript=$VM_RESULTS_DIR/$case_name/firewall-cleanup-$(date '+%Y%m%d-%H%M%S').log
+  mkdir -p "$(dirname -- "$transcript")"
+
+  printf 'Removing the test-only SSH firewall rule from %s.\n' "$vm"
+  if ssh_vm "$vm" yes "$remote_command" 2>&1 | tee "$transcript"; then
+    ssh_status=0
+  else
+    ssh_status=${PIPESTATUS[0]}
+  fi
+  printf 'Firewall cleanup transcript: %s\n' "$transcript"
+  return "$ssh_status"
+}
+
+collect_evidence() {
+  local case_name=${1:-}
+  local label=${2:-$(date '+%Y%m%d-%H%M%S')}
+  local vm output_dir
+  vm=$(case_vm_name "$case_name")
+  require_domain "$vm"
+  [[ $label =~ ^[a-zA-Z0-9][a-zA-Z0-9._-]*$ ]] || die "invalid evidence label: $label"
+
+  output_dir=$VM_RESULTS_DIR/$case_name/$label
+  mkdir -p "$output_dir"
+
+  capture_remote "$vm" "$output_dir/system.txt" \
+    "date --iso-8601=seconds; uname -a; id; printf '%s\\n' '--- repository ---'; git -C \"\$HOME/arch-bunny\" status --short --branch 2>/dev/null || true; git -C \"\$HOME/arch-bunny\" rev-parse HEAD 2>/dev/null || true; printf '%s\\n' '--- kernel command line ---'; cat /proc/cmdline; printf '%s\\n' '--- mkinitcpio hooks ---'; cat /etc/mkinitcpio.conf.d/bunny_hooks.conf 2>/dev/null || true; printf '%s\\n' '--- Plymouth theme ---'; plymouth-set-default-theme 2>/dev/null || true; printf '%s\\n' '--- filesystems and boot ---'; findmnt /; findmnt /home; bootctl status || true; printf '%s\\n' '--- network ---'; ip address; ip route; resolvectl status || true"
+  capture_remote "$vm" "$output_dir/install.log" \
+    "if [[ -f \"\$HOME/.local/state/arch-bunny/install.log\" ]]; then cat \"\$HOME/.local/state/arch-bunny/install.log\"; else printf '%s\\n' 'Install log not present'; fi"
+  capture_remote "$vm" "$output_dir/install-traces.log" \
+    "bash -c 'for trace in \"\$HOME\"/.local/state/arch-bunny/install.log.*.trace; do [[ -f \"\$trace\" ]] || continue; printf \"%s\\\\n\" \"--- \$trace ---\"; cat \"\$trace\"; done'"
+  capture_remote "$vm" "$output_dir/pacman.log" \
+    "cat /var/log/pacman.log"
+  capture_remote "$vm" "$output_dir/packages-explicit.txt" \
+    "pacman -Qqe"
+  capture_remote "$vm" "$output_dir/repositories.txt" \
+    "pacman-conf --repo-list; printf '%s\\n' '--- effective configuration ---'; pacman-conf"
+  capture_remote "$vm" "$output_dir/pacman-configuration.txt" \
+    "for file in /etc/pacman.conf /etc/pacman.conf.bunny-original /etc/pacman.conf.bunny-original.sha256 /etc/pacman.d/bunny-repositories.conf; do printf '%s\\n' \"--- \$file ---\"; sha256sum \"\$file\" 2>&1 || true; cat \"\$file\" 2>&1 || true; done"
+  capture_remote "$vm" "$output_dir/generation-hooks.txt" \
+    "for hook in /usr/share/libalpm/hooks/60-mkinitcpio-remove.hook /usr/share/libalpm/hooks/90-mkinitcpio-install.hook /etc/pacman.d/hooks/90-mkinitcpio-install.hook; do printf '%s\\n' \"--- \$hook ---\"; pacman -Qo \"\$hook\" 2>&1 || true; sha256sum \"\$hook\" 2>&1 || true; done"
+  capture_remote "$vm" "$output_dir/boot-generation-events.txt" \
+    "printf '%s\\n' '--- pacman log ---'; grep -Ei 'transaction|hook|initcpio|limine|kernel image|unified kernel' /var/log/pacman.log || true; printf '%s\\n' '--- installer log ---'; grep -Ei 'pacman --hookdir|normal pacman hooks|generation|initcpio|limine|unified kernel' \"\$HOME/.local/state/arch-bunny/install.log\" || true"
+  capture_remote "$vm" "$output_dir/journal-current-boot.log" \
+    "journalctl -b --no-pager"
+  capture_remote "$vm" "$output_dir/journal-user-current-boot.log" \
+    "journalctl --user -b --no-pager"
+  capture_remote "$vm" "$output_dir/failed-units.txt" \
+    "systemctl --failed --no-pager || true; systemctl --user --failed --no-pager || true"
+
+  printf 'Evidence saved under %s\n' "$output_dir"
+}
+
+view_clone() {
+  local vm
+  vm=$(case_vm_name "${1:-}")
+  require_domain "$vm"
+  require_command virt-manager
+  exec virt-manager --connect "$VM_CONNECT_URI" --show-domain-console "$vm"
+}
+
+save_screenshot() {
+  local vm output timestamp
+  vm=$(case_vm_name "${1:-}")
+  output=${2:-}
+  require_domain "$vm"
+
+  if [[ -z $output ]]; then
+    timestamp=$(date '+%Y%m%d-%H%M%S')
+    output=$VM_RESULTS_DIR/${vm#"$VM_NAME_PREFIX"}/screenshots/$timestamp.ppm
+  fi
+
+  mkdir -p "$(dirname -- "$output")"
+  virsh_cmd screenshot "$vm" "$output"
+  printf 'Saved screenshot: %s\n' "$output"
+}
+
+remove_clone() {
+  local vm state force
+  vm=$(case_vm_name "${1:-}")
+  force=${2:-}
+  [[ -z $force || $force == "--force" ]] || die "unknown remove option: $force"
+  [[ $vm != "$VM_BASE_NAME" ]] || die "refusing to remove baseline VM"
+  [[ $vm == "$VM_NAME_PREFIX"* ]] || die "refusing to remove unmanaged VM: $vm"
+  require_domain "$vm"
+
+  state=$(domain_state "$vm")
+  if [[ $state != "shut off" ]]; then
+    [[ $force == "--force" ]] ||
+      die "$vm is $state; stop it first or explicitly use remove ${1:-} --force"
+    printf 'Forcing off %s...\n' "$vm"
+    virsh_cmd destroy "$vm"
+  fi
+
+  printf 'Removing %s and its cloned storage...\n' "$vm"
+  virsh_cmd undefine "$vm" --nvram --remove-all-storage
+}
+
+list_clones() {
+  local found=0 vm
+  while IFS= read -r vm; do
+    [[ $vm == "$VM_NAME_PREFIX"* ]] || continue
+    printf '%-40s %s\n' "$vm" "$(domain_state "$vm")"
+    found=1
+  done < <(virsh_cmd list --all --name)
+
+  ((found)) || printf 'No managed VMs found with prefix %s\n' "$VM_NAME_PREFIX"
+}
+
+main() {
+  require_command virsh
+
+  local command=${1:-help}
+  shift || true
+
+  case "$command" in
+    create)
+      [[ $# -ge 1 && $# -le 2 ]] || die "usage: ${0##*/} create CASE [--start]"
+      create_clone "$@"
+      ;;
+    prepare)
+      [[ $# -eq 1 ]] || die "usage: ${0##*/} prepare CASE"
+      create_clone "$1" --start
+      ;;
+    start)
+      [[ $# -eq 1 ]] || die "usage: ${0##*/} start CASE"
+      start_clone "$1"
+      ;;
+    stop)
+      [[ $# -eq 1 ]] || die "usage: ${0##*/} stop CASE"
+      stop_clone "$1"
+      ;;
+    status)
+      [[ $# -eq 1 ]] || die "usage: ${0##*/} status CASE"
+      show_status "$1"
+      ;;
+    ip)
+      [[ $# -eq 1 ]] || die "usage: ${0##*/} ip CASE"
+      print_ip "$1"
+      ;;
+    wait-ip)
+      [[ $# -ge 1 && $# -le 2 ]] || die "usage: ${0##*/} wait-ip CASE [SECONDS]"
+      wait_for_ip "$@"
+      ;;
+    keygen)
+      [[ $# -eq 0 ]] || die "usage: ${0##*/} keygen"
+      generate_ssh_key
+      ;;
+    ssh-setup)
+      [[ $# -eq 0 ]] || die "usage: ${0##*/} ssh-setup"
+      print_ssh_setup
+      ;;
+    wait-ssh)
+      [[ $# -ge 1 && $# -le 2 ]] || die "usage: ${0##*/} wait-ssh CASE [SECONDS]"
+      wait_for_ssh "$@"
+      ;;
+    ssh)
+      [[ $# -ge 1 && $# -le 2 ]] || die "usage: ${0##*/} ssh CASE [COMMAND]"
+      open_ssh "$@"
+      ;;
+    bootstrap)
+      [[ $# -ge 1 && $# -le 2 ]] || die "usage: ${0##*/} bootstrap CASE [BRANCH]"
+      run_bootstrap "$@"
+      ;;
+    rerun)
+      [[ $# -ge 1 && $# -le 2 ]] || die "usage: ${0##*/} rerun CASE [BRANCH]"
+      rerun_installer "$@"
+      ;;
+    verify)
+      [[ $# -ge 1 && $# -le 2 ]] || die "usage: ${0##*/} verify CASE [LABEL]"
+      verify_install "$@"
+      ;;
+    collect)
+      [[ $# -ge 1 && $# -le 2 ]] || die "usage: ${0##*/} collect CASE [LABEL]"
+      collect_evidence "$@"
+      ;;
+    firewall-cleanup)
+      [[ $# -eq 1 ]] || die "usage: ${0##*/} firewall-cleanup CASE"
+      cleanup_test_firewall "$1"
+      ;;
+    view)
+      [[ $# -eq 1 ]] || die "usage: ${0##*/} view CASE"
+      view_clone "$1"
+      ;;
+    screenshot)
+      [[ $# -ge 1 && $# -le 2 ]] || die "usage: ${0##*/} screenshot CASE [FILE]"
+      save_screenshot "$@"
+      ;;
+    remove)
+      [[ $# -ge 1 && $# -le 2 ]] || die "usage: ${0##*/} remove CASE [--force]"
+      remove_clone "$@"
+      ;;
+    list)
+      [[ $# -eq 0 ]] || die "usage: ${0##*/} list"
+      list_clones
+      ;;
+    help|-h|--help)
+      usage
+      ;;
+    *)
+      usage >&2
+      die "unknown command: $command"
+      ;;
+  esac
+}
+
+main "$@"

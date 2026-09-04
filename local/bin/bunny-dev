@@ -1,0 +1,126 @@
+#!/bin/bash
+set -euo pipefail
+
+PI_PACKAGES=(nodejs npm glow)
+PI_NPM_PACKAGE=@earendil-works/pi-coding-agent
+
+usage() {
+  cat <<'EOF'
+Usage:
+  bunny-dev status
+  bunny-dev install pi
+  bunny-dev remove pi
+EOF
+}
+
+package_installed() {
+  pacman -Q "$1" >/dev/null 2>&1
+}
+
+development_status() {
+  local package state
+
+  printf 'Core build environment:\n'
+  for package in base-devel yay; do
+    if package_installed "$package"; then
+      state=installed
+    else
+      state=missing
+    fi
+    printf '  %-16s %s\n' "$package" "$state"
+  done
+
+  printf 'Docker environment:\n'
+  for package in "${DOCKER_PACKAGES[@]}"; do
+    if package_installed "$package"; then
+      state=installed
+    else
+      state=missing
+    fi
+    printf '  %-16s %s\n' "$package" "$state"
+  done
+
+  if systemctl is-enabled --quiet docker.socket 2>/dev/null; then
+    printf '  %-16s enabled\n' docker.socket
+  else
+    printf '  %-16s disabled\n' docker.socket
+  fi
+
+  if grep -Fq 'BEGIN UFW AND DOCKER' /etc/ufw/after.rules 2>/dev/null; then
+    printf '  %-16s installed\n' 'UFW rules'
+  else
+    printf '  %-16s missing\n' 'UFW rules'
+  fi
+
+  printf 'Pi environment:\n'
+  for package in "${PI_PACKAGES[@]}"; do
+    if package_installed "$package"; then
+      state=installed
+    else
+      state=missing
+    fi
+    printf '  %-16s %s\n' "$package" "$state"
+  done
+  if command -v pi >/dev/null 2>&1; then
+    printf '  %-16s %s (%s)\n' pi installed "$(pi --version 2>/dev/null || printf 'version unknown')"
+  else
+    printf '  %-16s missing\n' pi
+  fi
+}
+
+install_pi() {
+  sudo pacman -S --needed "${PI_PACKAGES[@]}"
+  npm install --global --ignore-scripts --prefix "$HOME/.local" "$PI_NPM_PACKAGE"
+
+  printf '\nPi and Glow are installed. Run pi and use /login before using Hivemind.\n'
+}
+
+remove_pi() {
+  local answer package
+  local -a installed_packages=()
+
+  read -r -p 'Remove Pi, Glow, Node.js, and npm? [y/N] ' answer
+  [[ $answer =~ ^[Yy]([Ee][Ss])?$ ]] || {
+    printf 'Pi removal cancelled.\n'
+    return 0
+  }
+
+  if command -v npm >/dev/null 2>&1 &&
+    npm list --global --prefix "$HOME/.local" --depth=0 "$PI_NPM_PACKAGE" >/dev/null 2>&1; then
+    npm uninstall --global --prefix "$HOME/.local" "$PI_NPM_PACKAGE"
+  fi
+
+  for package in "${PI_PACKAGES[@]}"; do
+    package_installed "$package" && installed_packages+=("$package")
+  done
+  if ((${#installed_packages[@]})); then
+    sudo pacman -Rns --noconfirm "${installed_packages[@]}"
+  fi
+
+  printf '\nPi and its system packages were removed. ~/.pi was preserved.\n'
+}
+
+case ${1:-} in
+  '')
+    usage
+    ;;
+  status)
+    (($# == 1)) || { usage >&2; exit 2; }
+    development_status
+    ;;
+  install|remove)
+    (($# == 2)) || { usage >&2; exit 2; }
+    [[ $2 == pi ]] || {
+      printf 'Unknown development environment: %s\n' "$2" >&2
+      exit 2
+    }
+    "${1}_${2}"
+    ;;
+  -h|--help)
+    usage
+    ;;
+  *)
+    usage >&2
+    exit 2
+    ;;
+esac

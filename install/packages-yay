@@ -1,0 +1,6 @@
+# Packages built from the AUR with `yay`, installed after the bootloader phase
+# so nothing here triggers a boot-artifact rebuild mid-install.
+#
+# Blank lines and `#` comments are ignored.
+brave-bin
+miniconda3

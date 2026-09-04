@@ -1,0 +1,10 @@
+#!/bin/bash
+
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/lib/helpers.sh"
+
+if rfkill list bluetooth | grep -q "Soft blocked: yes"; then
+  rfkill unblock bluetooth
+else
+  rfkill block bluetooth
+fi

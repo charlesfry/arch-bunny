@@ -1,0 +1,24 @@
+#!/bin/bash
+
+if [[ "$1" == power ]]; then
+  options="  Lock
+  Restart
+  Shutdown"
+
+  case $(bunny-launch-menu "" <<< "$options") in
+    *Lock*)     bunny-lock-screen ;;
+    *Restart*)  bunny-cmd-reboot ;;
+    *Shutdown*) bunny-cmd-shutdown ;;
+  esac
+  exit
+fi
+
+options="Sound
+  Wifi
+  Bluetooth"
+
+case $(bunny-launch-menu "" <<< "$options") in
+  *Sound*)            bunny-launch-term-float wiremix ;;
+  *Wifi*)             bunny-launch-wifi ;;
+  *Bluetooth*)        bunny-launch-bluetooth ;;
+esac

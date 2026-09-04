@@ -1,0 +1,113 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/lib/niri-helpers.sh"
+
+layout="horizontal"
+dot="·"
+active="●"
+hide_single=false
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --layout)
+      [[ $# -ge 2 && "$2" =~ ^(horizontal|vertical)$ ]] || { printf 'invalid layout\n' >&2; exit 2; }
+      layout="$2"
+      shift 2
+      ;;
+    --dot)
+      [[ $# -ge 2 ]] || { printf '%s requires a value\n' "$1" >&2; exit 2; }
+      dot="$2"
+      shift 2
+      ;;
+    --active)
+      [[ $# -ge 2 ]] || { printf '%s requires a value\n' "$1" >&2; exit 2; }
+      active="$2"
+      shift 2
+      ;;
+    --hide-single)
+      hide_single=true
+      shift
+      ;;
+    *)
+      printf 'unknown option: %s\n' "$1" >&2
+      exit 2
+      ;;
+  esac
+done
+
+render() {
+  local workspace_id text separator window position
+  local -a windows dots
+
+  workspace_id="$(niri_focused_workspace_id 2>/dev/null || true)"
+  if [[ -z "$workspace_id" ]]; then
+    printf '{"text":""}\n'
+    return
+  fi
+
+  mapfile -t windows < <(
+    niri_tiled_windows_on_workspace_sorted "$workspace_id" |
+      jq -r '[.layout.pos_in_scrolling_layout[0], (.is_focused | tostring)] | @tsv'
+  )
+
+  if "$hide_single" && ((${#windows[@]} <= 1)); then
+    printf '{"text":""}\n'
+    return
+  fi
+
+  dots=()
+  for window in "${windows[@]}"; do
+    IFS=$'\t' read -r _ position <<< "$window"
+    if [[ "$position" == true ]]; then
+      dots+=("$active")
+    else
+      dots+=("$dot")
+    fi
+  done
+
+  if [[ "$layout" == vertical ]]; then
+    separator=$'\n'
+  else
+    separator=' '
+  fi
+
+  text="$(IFS="$separator"; printf '%s' "${dots[*]:-}")"
+  jq -cn --arg text "$text" '{text: $text}'
+}
+
+render
+
+# Keep one IPC connection open. Only these events can change the indicator:
+# focus changes, window membership/order changes, and workspace activation.
+is_relevant_event() {
+  jq -e '
+    [keys[]]
+    | any(test("^(WindowFocusChanged|WindowOpenedOrChanged|WindowClosed|WindowsChanged|WindowLayoutsChanged|WorkspaceActivated|WorkspacesChanged)$"))
+  ' >/dev/null 2>&1
+}
+
+# Coalesce event bursts (for example, opening a window can produce several
+# related events) without introducing polling latency during normal use.
+last_render_ns=0
+render_if_needed() {
+  local now elapsed
+  now="$(date +%s%N)"
+  elapsed=$((now - last_render_ns))
+  if ((elapsed < 50000000)); then
+    return
+  fi
+  last_render_ns="$now"
+  render
+}
+
+# Reconnect if the compositor or IPC stream restarts.
+while true; do
+  while IFS= read -r event; do
+    if is_relevant_event <<< "$event"; then
+      render_if_needed
+    fi
+  done < <(niri msg --json event-stream 2>/dev/null)
+  sleep 1
+done

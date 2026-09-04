@@ -1,0 +1,41 @@
+#!/bin/bash
+#
+# bunny-theme-background — Set desktop wallpaper from a URL or file path
+#
+# Usage:
+#   bunny-theme-background <url-or-path>
+#
+# Copies or downloads the image to ~/background.jpg (always .jpg),
+# then restarts swaybg. Hyprlock picks it up automatically on next lock.
+
+set -euo pipefail
+
+TARGET="$HOME/background.jpg"
+
+usage() {
+  echo "Usage: bunny-theme-background <url-or-path>"
+  echo "  Sets the desktop wallpaper from a URL or local file."
+  exit 1
+}
+
+[[ $# -lt 1 ]] && usage
+src="$1"
+
+if [[ "$src" =~ ^https?:// ]]; then
+  echo "Downloading $src..."
+  curl -fSL -o "$TARGET" "$src"
+else
+  [[ ! -f "$src" ]] && { echo "Error: File not found: $src" >&2; exit 1; }
+  cp "$src" "$TARGET"
+  echo "Copied $src → $TARGET"
+fi
+
+# Restart swaybg to pick up the new wallpaper
+if systemctl --user is-active swaybg.service &>/dev/null; then
+  systemctl --user restart swaybg.service
+  echo "swaybg restarted."
+else
+  echo "Note: swaybg.service is not running."
+fi
+
+echo "Done. Wallpaper updates!"

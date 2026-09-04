@@ -1,0 +1,46 @@
+#!/bin/bash
+
+query="$*"
+
+BLUE='\033[38;2;97;175;239m'
+BOLD='\033[1m'
+DIM='\033[2m'
+RESET='\033[0m'
+
+echo ""
+printf "${BLUE}>${RESET} %s\n" "$query"
+echo ""
+
+raw=$(cd /tmp && pi \
+  --offline \
+  --provider openai-codex \
+  --model gpt-5.4-mini \
+  --thinking off \
+  --system-prompt "Reply in one sentence only. No bullet points." \
+  --no-tools \
+  --no-extensions \
+  --no-skills \
+  --no-prompt-templates \
+  --no-themes \
+  --no-context-files \
+  --mode json \
+  --print "$query" < /dev/null)
+
+result=$(printf '%s\n' "$raw" | jq -sr '[.[] | select(.type == "message_end" and .message.role == "assistant") | .message.content[]? | select(.type == "text") | .text] | join("")')
+session_id=$(printf '%s\n' "$raw" | jq -sr '[.[] | select(.type == "session") | .id] | first // empty')
+
+echo "$result" | glow -
+echo ""
+printf "  ${DIM}type to dive deeper, enter to close${RESET}\n"
+echo ""
+read -rp " > " followup
+
+if [[ -n "$followup" ]]; then
+  cd /tmp && exec pi \
+    --offline \
+    --provider openai-codex \
+    --model gpt-5.4-mini \
+    --thinking off \
+    --session "$session_id" \
+    "$followup"
+fi

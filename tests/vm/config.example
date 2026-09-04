@@ -1,0 +1,14 @@
+# Example config
+
+VM_CONNECT_URI=qemu:///system
+VM_BASE_NAME=arch-bunny-arch-base
+VM_NAME_PREFIX=arch-bunny-test-
+VM_NETWORK=default
+VM_RESULTS_DIR="$HOME/VMs/arch-bunny/test-results"
+VM_WAIT_TIMEOUT=120
+
+VM_SSH_USER=arch-bunny-user
+VM_SSH_KEY="$HOME/.local/state/arch-bunny-vm/id_ed25519"
+VM_SSH_KNOWN_HOSTS="$HOME/.local/state/arch-bunny-vm/known_hosts"
+VM_BOOTSTRAP_URL=https://raw.githubusercontent.com/charlesfry/arch-bunny/master/bootstrap.sh
+VM_INSTALL_BRANCH=installer-refactor

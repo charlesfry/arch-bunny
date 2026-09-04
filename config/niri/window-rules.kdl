@@ -1,0 +1,42 @@
+// For floating windows and misc system/about tuis
+window-rule {
+  match app-id="dot.float"
+  match app-id="org.gnome.Nautilus"
+  match app-id="mpv"
+  match app-id="imv"
+
+  open-floating true
+  open-focused true
+
+  default-window-height { proportion 0.4; }
+  default-column-width { proportion 0.3; }
+}
+
+window-rule {
+    match app-id="^brave-browser$"
+    open-maximized true
+}
+
+window-rule {
+    match app-id="^kitty$"
+    open-maximized true
+}
+
+// Bunny: maximize the Mod+Shift+N nvim launch. Every kitty window shares app-id
+// "kitty", so the spawn below pins the title to "Neovim" and locks it
+// (dynamic_title=no) so nvim cannot overwrite it, and this rule matches that.
+window-rule {
+    match app-id="^kitty$" title="^Neovim$"
+    open-maximized true
+}
+
+// Window currently being recorded — loud border so it's obvious what's live
+window-rule {
+  match is-window-cast-target=true
+
+  border {
+    width 2
+    active-color "#e06c75"
+    inactive-color "#e06c75"
+  }
+}

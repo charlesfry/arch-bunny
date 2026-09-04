@@ -1,0 +1,64 @@
+#!/bin/bash
+
+set -e
+
+trap 'echo ""; echo -e "\033[0;31mSomething went wrong during the update!\n\nPlease review the output above carefully, correct the error, and retry the update.\033[0m";bunny-snapshot delete' ERR
+
+confirm() {
+  local prompt="$1"
+  local answer
+
+  read -r -p "$prompt [y/N] " answer
+  [[ "$answer" =~ ^[Yy]([Ee][Ss])?$ ]]
+}
+
+cat <<'EOF'
+Ready to update?
+
+• You cannot stop the update once you start.
+• Make sure you're connected to power or have a full battery.
+EOF
+
+echo
+if ! confirm "Continue with update?"; then
+  echo "Update cancelled"
+  exit 1
+fi
+
+update_log="/tmp/bunny-update.log"
+# Create snapshot before update
+bunny-snapshot create || [ $? -eq 127 ]
+
+exec > >(tee "$update_log") 2>&1
+
+echo -e "\e[32m\nUpdate system packages\e[0m"
+sudo pacman -Syu --noconfirm
+
+orphans=()
+mapfile -t orphans < <(pacman -Qtdq)
+if ((${#orphans[@]})); then
+  echo -e "\e[32m\nRemove orphan system packages\e[0m"
+  sudo pacman -Rns --noconfirm "${orphans[@]}"
+  echo
+fi
+
+# Check for errors
+if grep -qi "^error:" "$update_log"; then
+  echo -e "\e[31mNon-stopping errors detected during update:\e[0m"
+  grep -i "^error:" "$update_log"
+  echo
+fi
+
+# Check for initramfs generation failure
+if grep -q "Updating linux initcpios" "$update_log"; then
+  if ! grep -q "Initcpio image generation successful" "$update_log"; then
+    echo -e '\e[31mError: Initramfs generation may have failed. Review logs before restart.\e[0m'
+    echo
+  fi
+fi
+
+echo ""
+echo ""
+if confirm "Would you like to reboot now?"; then
+  bunny-cmd-reboot
+fi

@@ -1,0 +1,17 @@
+#!/bin/bash
+
+exec bemenu \
+  --prompt "$1" \
+  --ignorecase \
+  --fn 'Noto Sans Mono, Symbols Nerd Font Mono, monospace 10' \
+  --line-height 30 \
+  --hp 10 \
+  --no-overlap \
+  --border 0 \
+  --border-radius 0 \
+  --nb '#1b212aff' --nf '#c9cfda' \
+  --tb '#1b212aff' --tf '#d9a86c' \
+  --fb '#1b212aff' --ff '#c9cfda' \
+  --hb '#1b212aff' --hf '#d9a86c' \
+  --sb '#1b212aff' --sf '#d9a86c' \
+  --ab '#1b212aff' --af '#c9cfda'

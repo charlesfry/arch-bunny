@@ -1,0 +1,29 @@
+#!/bin/bash
+
+# fzf a project dir, create/attach a tmux session named after it.
+# Adapted from https://github.com/ThePrimeagen/tmux-sessionizer
+
+if [[ $# -eq 1 ]]; then
+  selected="$1"
+else
+  selected=$( { find ~/projects ~/projects/14kb ~/work -mindepth 1 -maxdepth 1 -type d 2>/dev/null; echo "$HOME/arch-bunny"; } | fzf)
+fi
+
+[[ -n $selected ]] || exit 0
+
+# Path hash keeps same-named dirs in different trees as distinct sessions.
+# The `tl` alias strips this suffix for display.
+name="$(basename "$selected" | tr . _)-$(echo "$selected" | shasum -a 256 | cut -c1-4)"
+
+if ! tmux has-session -t="$name" 2>/dev/null; then
+  tmux new-session -ds "$name" -c "$selected" -n vim
+  tmux send-keys -t "$name":1 vim Enter
+  tmux new-window -t "$name" -c "$selected"
+  tmux select-window -t "$name":1
+fi
+
+if [[ -z $TMUX ]]; then
+  tmux attach-session -t "$name"
+else
+  tmux switch-client -t "$name"
+fi

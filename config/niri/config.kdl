@@ -1,0 +1,128 @@
+include "bindings.kdl"
+include "window-rules.kdl"
+include optional=true "window-rules.laptop.kdl"
+include "animations.kdl"
+
+switch-events {
+  lid-close { spawn "bunny-cmd-shutdown"; }
+}
+
+spawn-at-startup "uwsm" "finalize"
+
+screenshot-path "~/Pictures/Screenshots/Screenshot %Y-%m-%d %H-%M-%S.png"
+prefer-no-csd
+
+hotkey-overlay {
+  skip-at-startup
+  hide-not-bound
+}
+
+// No Mod+tab or Alt+Tab overlays
+recent-windows { off; }
+
+// Inputs
+input {
+  focus-follows-mouse
+  disable-power-key-handling
+  warp-mouse-to-focus mode="center-xy"
+
+  keyboard {
+    xkb {
+      // options "lv5:caps_switch"
+    }
+
+    // repeat-delay 300
+    // repeat-rate 50
+    numlock
+  }
+
+  touchpad {
+    click-method "clickfinger"
+  }
+}
+
+// Cursor
+cursor {
+  xcursor-size 18
+  hide-when-typing
+}
+
+// Output displays
+// niri msg outputs
+output "eDP-1" {
+  mode "2880x1920@120.000"
+  scale 2
+  focus-at-startup
+
+  hot-corners {
+    off
+  }
+
+  layout {
+    default-column-width { proportion 0.5; }
+
+    preset-column-widths {
+      proportion 0.5
+      proportion 0.66667
+    }
+
+    focus-ring {
+      off
+    }
+  }
+}
+
+output "HDMI-A-1" {
+  mode "3440x1440@59.973"
+  scale 1
+  focus-at-startup
+
+  hot-corners {
+    off
+  }
+
+  layout {
+    default-column-width { proportion 0.33333; }
+
+    preset-column-widths {
+      proportion 0.33333
+      proportion 0.5
+      proportion 0.66667
+    }
+
+    preset-window-heights {
+      proportion 0.33333
+      proportion 0.5
+      proportion 0.66667
+    }
+
+    focus-ring {
+      off
+    }
+  }
+}
+
+// Layout
+layout {
+  always-center-single-column
+  background-color "#1e2229"
+  gaps 0
+
+  focus-ring {
+    off
+  }
+
+  border {
+    width 1
+    inactive-color "#1b212a"
+    active-color "#5c6370"
+  }
+
+  shadow {
+    off
+  }
+
+  struts {
+    right 51
+  }
+}

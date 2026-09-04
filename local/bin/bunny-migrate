@@ -1,0 +1,41 @@
+#!/bin/bash
+set -euo pipefail
+
+# Restow the dotfiles and remove symlinks left by older dotfile versions.
+REPO_ROOT="$(cd "$(dirname "$(readlink -f "$0")")/../.." && pwd)"
+USER_HOME="${HOME}"
+
+cd "$REPO_ROOT"
+
+printf 'Restowing dotfiles from %s...\n' "$REPO_ROOT"
+stow --restow home
+stow --restow --no-folding -t "$USER_HOME/.config" config
+stow --restow --no-folding -t "$USER_HOME/.local" local
+
+removed=0
+declare -a roots=(
+  "$USER_HOME"
+  "$USER_HOME/.config"
+  "$USER_HOME/.local"
+)
+for root in "${roots[@]}"; do
+  [[ -d "$root" ]] || continue
+  maxdepth=()
+  [[ "$root" == "$USER_HOME" ]] && maxdepth=(-maxdepth 1)
+  while IFS= read -r -d '' link; do
+    target="$(readlink "$link")"
+    if [[ "$target" = /* ]]; then
+      target_abs="$target"
+    else
+      target_abs="$(realpath -m "$(dirname "$link")/$target")"
+    fi
+
+    if [[ "$target_abs" == "$REPO_ROOT/"* ]] && [[ ! -e "$target_abs" ]]; then
+      rm "$link"
+      printf 'Removed orphaned symlink: %s\n' "$link"
+      ((removed += 1))
+    fi
+  done < <(find "$root" "${maxdepth[@]}" -type l -print0)
+done
+
+printf 'Migration complete: dotfiles restowed, %d orphaned symlink(s) removed.\n' "$removed"

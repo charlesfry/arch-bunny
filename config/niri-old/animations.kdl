@@ -1,0 +1,19 @@
+// Animations. Included from config.kdl.
+
+
+// You can also set this to null to disable saving screenshots to disk.
+// screenshot-path null
+
+// Animation settings.
+// The wiki explains how to configure individual animations:
+// https://niri-wm.github.io/niri/Configuration:-Animations
+animations {
+    // Uncomment to turn off all animations.
+    // off
+
+    // Slow down all animations by this factor. Values below 1 speed them up instead.
+    // Bunny: 0.6 is a speed-up. An animation is dead time inside priority 2a's
+    // keybind-to-result window; this trims it without going to `off`, which loses the
+    // cue for which direction the column moved.
+    slowdown 0.6
+}

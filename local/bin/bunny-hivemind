@@ -1,0 +1,4 @@
+#!/bin/bash
+
+query=$(bunny-launch-menu " Ask the hivemind…" < /dev/null)
+[[ -n "$query" ]] && bunny-launch-term-float bunny-hivemind-run "$query"

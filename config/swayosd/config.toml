@@ -1,0 +1,8 @@
+[server]
+style = "~/.config/swayosd/style.css"
+
+max_volume = 100
+show_percentage = true
+playerctl_format = "{artist} - {title}"
+
+[client]

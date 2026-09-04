@@ -1,0 +1,8 @@
+color:
+  theme: custom
+
+ignore-globs:
+    - node_modules
+    - .git
+    - target
+    - dist

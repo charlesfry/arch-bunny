@@ -1,0 +1,12 @@
+// Laptop overrides — uncomment include in config.kdl to activate
+
+window-rule {
+  match app-id="dot.float"
+  match app-id="org.gnome.Nautilus"
+  match app-id="mpv"
+  match app-id="imv"
+
+  open-floating false
+  default-column-width { proportion 0.5; }
+  default-window-height {}
+}

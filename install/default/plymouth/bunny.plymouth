@@ -1,0 +1,8 @@
+[Plymouth Theme]
+Name=Bunny
+Description=Minimal Arch boot theme with dot palette
+ModuleName=script
+
+[script]
+ImageDir=/usr/share/plymouth/themes/bunny/images
+ScriptFile=/usr/share/plymouth/themes/bunny/images/bunny.script

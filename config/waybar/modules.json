@@ -1,0 +1,97 @@
+{
+  "niri/workspaces": {
+    "on-click": "activate",
+    "format": "{icon}",
+    "format-icons": {
+      "1": "1",
+      "2": "2",
+      "3": "3",
+      "4": "4",
+      "5": "5",
+      "6": "6",
+      "7": "7",
+      "8": "8",
+      "9": "9",
+      "10": "0"
+    }
+  },
+  "clock": {
+    "format": "{0:%H:%M}  <span alpha='55%' foreground='#98a2b0'>{0:%m/%d}</span>",
+    "format-alt": "{:%Y-%m-%d}",
+    "tooltip": false
+  },
+  "battery": {
+    "format": "{capacity}% {icon}",
+    "format-discharging": "{icon}",
+    "format-charging": "{icon}",
+    "format-plugged": "",
+    "format-icons": {
+      "charging": ["󰢜", "󰂆", "󰂇", "󰂈", "󰢝", "󰂉", "󰢞", "󰂊", "󰂋", "󰂅"],
+      "default": ["󰁺", "󰁻", "󰁼", "󰁽", "󰁾", "󰁿", "󰂀", "󰂁", "󰂂", "󰁹"]
+    },
+    "format-full": "󰂅",
+    "tooltip-format-discharging": "{power:>1.0f}W↓ {capacity}%",
+    "tooltip-format-charging": "{power:>1.0f}W↑ {capacity}%",
+    "interval": 30,
+    "on-click": "bunny-menu power",
+    "states": {
+      "warning": 20,
+      "critical": 10
+    }
+  },
+  "tray": {
+    "spacing": 8,
+    "reverse-direction": true,
+    "icon-size": 14,
+    "show-passive-items": false
+  },
+  "custom/niri-window-position": {
+    "exec": "niri-window-position --layout horizontal --dot ○ --active ● --hide-single",
+    "return-type": "json"
+  },
+  "custom/idle-indicator": {
+    "on-click": "bunny-toggle-idle",
+    "exec": "$HOME/.config/waybar/indicators/idle.sh",
+    "signal": 10,
+    "return-type": "json"
+  },
+  "custom/screenrecord-indicator": {
+    "on-click": "bunny-cmd-screenrecord",
+    "exec-on-event": false,
+    "exec": "$HOME/.config/waybar/indicators/screenrecord.sh",
+    "signal": 9,
+    "return-type": "json"
+  },
+  "custom/webcam-indicator": {
+    "exec": "$HOME/.config/waybar/indicators/webcam.sh",
+    "return-type": "json",
+    "interval": 5
+  },
+  "custom/screenshare-indicator": {
+    "exec": "$HOME/.config/waybar/indicators/screenshare.sh",
+    "return-type": "json",
+    "interval": 5
+  },
+  "custom/dnd": {
+    "on-click": "bunny-toggle-dnd",
+    "exec": "$HOME/.config/waybar/indicators/dnd.sh",
+    "signal": 8,
+    "return-type": "json"
+  },
+  "network": {
+    "interval": 5,
+    "format-wifi": "{icon}",
+    "format-ethernet": "󰈀",
+    "format-disconnected": "󰤮",
+    "format-icons": ["󰤯", "󰤟", "󰤢", "󰤥", "󰤨"],
+    "tooltip-format-wifi": "{essid} ({signalStrength}%)  {bandwidthDownBits}↓ {bandwidthUpBits}↑",
+    "tooltip-format-ethernet": "{ifname} 󰈀",
+    "tooltip-format-disconnected": "Disconnected",
+    "on-click": "bunny-launch-wifi"
+  },
+  "custom/weather": {
+    "exec": "$HOME/.config/waybar/indicators/weather.sh",
+    "interval": 600,
+    "tooltip": false
+  }
+}

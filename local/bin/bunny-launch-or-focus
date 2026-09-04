@@ -1,0 +1,24 @@
+#!/bin/bash
+set -euo pipefail
+
+# -------------------------------------------------------------------
+# Usage check
+# -------------------------------------------------------------------
+if [[ $# -lt 1 ]]; then
+  echo "Usage: $(basename "$0") <window_pattern> [launch_command]"
+  echo
+  echo "Examples:"
+  echo "  $(basename "$0") firefox firefox"
+  echo "  $(basename "$0") alacritty alacritty"
+  echo "  $(basename "$0") slack \"slack --enable-features=UseOzonePlatform --ozone-platform=wayland\""
+  exit 1
+fi
+
+PATTERN="$1"
+LAUNCH_COMMAND="${2:-$PATTERN}"
+
+# Include niri helpers
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/lib/niri-helpers.sh"
+
+niri_focus_or_spawn "$PATTERN" "$LAUNCH_COMMAND"

@@ -1,0 +1,8 @@
+{
+  // CHOICES.md `editor` review item: notebook-style markdown has deliberate
+  // blank-line spacing around code fences that MD012 flags as noise.
+  "MD012": false,
+  // Our notebook convention is one H1 per cell (see molten_test.md), so MD025
+  // fires on every section after the first by design.
+  "MD025": false
+}

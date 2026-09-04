@@ -1,0 +1,31 @@
+{
+  "reload_style_on_change": true,
+  "toggle": true,
+  "layer": "top",
+  "height": 36,
+  "position": "top",
+  "margin-top": 0,
+  "margin-bottom": 0,
+  "margin-left": 0,
+  "margin-right": 0,
+  "spacing": 0,
+  "include": ["~/.config/waybar/modules.json"],
+  "modules-left": [
+    "clock",
+    "custom/dnd",
+    "custom/idle-indicator",
+    "custom/screenrecord-indicator",
+    "custom/screenshare-indicator",
+    "custom/webcam-indicator"
+  ],
+  "modules-center": [
+    "niri/workspaces",
+    "custom/weather"
+  ],
+  "modules-right": [
+    "custom/niri-window-position",
+    "tray",
+    "network",
+    "battery"
+  ]
+}

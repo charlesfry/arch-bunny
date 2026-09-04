@@ -1,0 +1,24 @@
+// Animation Settings
+animations {
+  slowdown 0.6
+
+  window-open {
+    off
+  }
+  window-close {
+    off
+  }
+  horizontal-view-movement {
+    spring damping-ratio=1.0 stiffness=1500 epsilon=0.0001
+  }
+  window-movement {
+    spring damping-ratio=1.0 stiffness=1500 epsilon=0.0001
+  }
+  window-resize {
+    spring damping-ratio=1.0 stiffness=1500 epsilon=0.0001
+  }
+  screenshot-ui-open {
+    duration-ms 300
+    curve "ease-out-quad"
+  }
+}
