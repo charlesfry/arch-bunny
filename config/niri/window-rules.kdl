@@ -13,6 +13,12 @@ window-rule {
 }
 
 window-rule {
+    match app-id="^signal$"
+    open-maximized true
+    open-floating false
+}
+
+window-rule {
     match app-id="^brave-browser$"
     open-maximized true
 }
