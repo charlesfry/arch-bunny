@@ -102,6 +102,7 @@ if [[ ${1-} == --add ]]; then
 	mv "$tmp" "$map_file"
 
 	apply_location "$location"
+	echo "$ssid: $location"
 	exit 0
 fi
 

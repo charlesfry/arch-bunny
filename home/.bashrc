@@ -17,6 +17,13 @@ conda() {
 
 alias vi='nvim'
 
+# Plain `clear` only wipes the visible screen; scrollback survives so scrolling
+# up still shows old output. `\e[3J` additionally erases the scrollback buffer.
+clear() {
+    command clear
+    printf '\e[3J'
+}
+
 eval "$(direnv hook bash)"
 
 # Machine-local overrides, never tracked by git (lives in $HOME, outside this repo).

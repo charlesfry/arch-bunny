@@ -1,19 +1,20 @@
 # Global settings
 max-history=10
 max-visible=5
-default-timeout=5000
+default-timeout=2000
 anchor=top-right
 width=300
 
 # Styling
 font=Noto Sans Mono, Symbols Nerd Font Mono, monospace 10
-background-color=#2c3540ff
-text-color=#c9cfdaff
-border-color=#4d5765ff
-border-size=1
+background-color=#3b4045ff
+text-color=#f5f5f0ff
+border-color=#d4af37ff
+border-size=2
 border-radius=0
 padding=15
 max-icon-size=32
+icon-location=right
 outer-margin=0
 margin=5
 

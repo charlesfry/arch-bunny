@@ -1,6 +1,6 @@
 # :rocket: arch-bunny
 
-## Huge thanks to viacoffee, whose [dotfiles repo](https://github.com/viacoffee/dotfiles) is used extensively here.
+## Huge thanks to viacoffee, whose [dotfiles repo](https://github.com/viacoffee/dotfiles) is borrowed extensively here.
 
 ## Installation
 
@@ -9,12 +9,13 @@ This is an Arch Linux setup. Start with [archinstall](https://wiki.archlinux.org
 ### Initial setup (archinstall)
 
 1. **Mirror select** — choose `us`
-2. **Disk** → Partitioning → `best_effort`
+2. **Disk** → Partitioning → `best_effort (or whatever your partition scheme should be)`
 3. **Encryption** → LUKS → set a password → select your drive/partition
 4. **Bootloader** → `limine`
 5. **UKI** → confirm (ok)
-6. **Additional packages** → add `pipewire`
-7. **Timezone** → select your region
+6. **NetworkManager** → iwd Backend
+7. **Additional packages** → add `pipewire` and `git`
+8. **Timezone** → select your region
 
 After archinstall finishes and the system reboots, log in and continue below.
 

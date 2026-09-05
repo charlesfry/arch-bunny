@@ -80,9 +80,9 @@ stop_screenrecording() {
 
   if pidof gpu-screen-recorder >/dev/null; then
     pkill -9 gpu-screen-rec
-    notify-send "Screen recording error" "Recording process had to be force-killed. Video may be corrupted." -u critical -t 5000
+    notify-send -i ~/.config/mako/icon.png "Screen recording error" "Recording process had to be force-killed. Video may be corrupted." -u critical -t 5000
   else
-    notify-send "Screen recording saved to $OUTPUT_DIR" -t 2000
+    notify-send -i ~/.config/mako/icon.png "Screen recording saved to $OUTPUT_DIR" -t 2000
   fi
 
   update_screenrecord_indicator
