@@ -28,6 +28,13 @@ fi
 sudo mkdir -p /etc/iwd
 sudo cp "$BUNNY_INSTALL_DEFAULTS_PATH/iwd/main.conf" /etc/iwd/main.conf
 
+# Battery low/critical notifications, event-driven off the power_supply
+# uevent udev already receives (no resident watcher)
+sudo mkdir -p /etc/udev/rules.d
+sudo cp "$BUNNY_INSTALL_DEFAULTS_PATH/udev/99-battery-notify.rules" /etc/udev/rules.d/99-battery-notify.rules
+run_logged "Reloading udev rules" \
+  sudo udevadm control --reload-rules
+
 # Keep systemd-networkd for ethernet only — mask WiFi/WWAN .network files
 # so networkd doesn't compete with iwd for DHCP on wireless interfaces
 sudo cp "$BUNNY_INSTALL_DEFAULTS_PATH/networkd/20-ethernet.network" /etc/systemd/network/20-ethernet.network

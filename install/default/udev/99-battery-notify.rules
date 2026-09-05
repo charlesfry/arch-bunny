@@ -1,0 +1,4 @@
+# Event-driven battery low/critical notifications. Piggybacks on the kernel
+# power_supply uevent that already fires on capacity/status change instead of
+# running a resident watcher (upower --monitor, a polling timer, etc).
+ACTION=="change", SUBSYSTEM=="power_supply", ATTR{type}=="Battery", RUN+="/home/bunny/.local/bin/bunny-battery-notify"
