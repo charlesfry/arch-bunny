@@ -1,0 +1,11 @@
+#!/bin/bash
+set -euo pipefail
+
+# ! WARNING
+# Invoked by swayidle; it is not recommended to execute this directly.
+# Use bunny-cmd-lock or bunny-cmd-suspend instead.
+
+: "${XDG_RUNTIME_DIR:?XDG_RUNTIME_DIR is required}"
+
+exec flock --nonblocking "$XDG_RUNTIME_DIR/bunny-launch-lock-screen.lock" \
+  hyprlock --immediate-render --no-fade-in

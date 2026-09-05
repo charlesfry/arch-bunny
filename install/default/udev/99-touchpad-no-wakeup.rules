@@ -1,0 +1,2 @@
+# Prevent touchpad input from waking the system.
+SUBSYSTEM=="i2c", KERNEL=="i2c-PIXA3854:00", ATTR{power/wakeup}="disabled"

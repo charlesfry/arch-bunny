@@ -5,9 +5,20 @@ if [[ -e /run/systemd/shutdown/scheduled ]]; then
   exec bunny-cmd-shutdown
 fi
 
-if ! pgrep --exact hyprlock >/dev/null; then
-  bunny-lock-screen &
-  sleep 0.5
-fi
+: "${XDG_SESSION_ID:?XDG_SESSION_ID is required}"
 
-systemctl suspend
+session_locked() {
+  [[ "$(loginctl show-session "$XDG_SESSION_ID" --property=LockedHint --value)" == "yes" ]]
+}
+
+bunny-cmd-lock
+
+for _ in {1..50}; do
+  if session_locked; then
+    systemctl suspend
+    exit
+  fi
+  sleep 0.1
+done
+
+exit 1

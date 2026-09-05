@@ -6,7 +6,7 @@ if [[ "$1" == power ]]; then
   Shutdown"
 
   case $(bunny-launch-menu "" <<< "$options") in
-    *Lock*)     bunny-lock-screen ;;
+    *Lock*)     bunny-cmd-lock ;;
     *Restart*)  bunny-cmd-reboot ;;
     *Shutdown*) bunny-cmd-shutdown ;;
   esac

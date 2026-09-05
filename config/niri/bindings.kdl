@@ -35,9 +35,9 @@ binds {
     // Bunny: lock moved from stock's Super+Alt+L, since every other L combination is
     // part of the HJKL directional set. `-f` daemonizes so swayidle's `-w` can wait
     // on it; `spawn-sh` because the image path needs shell expansion.
-    // bunny-lock, not swaylock directly: swayidle.service locks with the same
+    // bunny-cmd-lock, not hyprlock directly: swayidle.service locks with the same
     // command, and this binding had already drifted from it (no -k, no -F).
-    Mod+Escape hotkey-overlay-title="Lock the Screen" { spawn "bunny-lock"; }
+    Mod+Escape hotkey-overlay-title="Lock the Screen" { spawn "bunny-cmd-lock"; }
 
     // Use spawn-sh to run a shell command. Do this if you need pipes, multiple commands, etc.
     // Note: the entire command goes as a single argument. It's passed verbatim to `sh -c`.

@@ -98,6 +98,12 @@ fi
 sudo mkdir -p "/etc/systemd/system.conf.d"
 sudo cp "$BUNNY_INSTALL_DEFAULTS_PATH/systemd/faster-shutdown.conf" /etc/systemd/system.conf.d/10-faster-shutdown.conf
 
+# Prevent touchpad input from waking the system.
+sudo mkdir -p /etc/udev/rules.d
+sudo cp "$BUNNY_INSTALL_DEFAULTS_PATH/udev/99-touchpad-no-wakeup.rules" /etc/udev/rules.d/99-touchpad-no-wakeup.rules
+sudo udevadm control --reload
+sudo udevadm trigger --subsystem-match=i2c --sysname-match='i2c-PIXA3854:00'
+
 run_logged "Reloading systemd manager" \
   sudo systemctl daemon-reload
 success "System services configured"
