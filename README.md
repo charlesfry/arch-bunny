@@ -9,11 +9,22 @@ This is an Arch Linux setup. Start with [archinstall](https://wiki.archlinux.org
 ### Initial setup (archinstall)
 
 1. **Mirror select** — choose `us`
-2. **Disk** → Partitioning → `best_effort` — this lays down the four subvolumes the rest of
-   the setup expects: `@` → `/`, `@home` → `/home`, `@log` → `/var/log`, and `@pkg` →
-   `/var/cache/pacman/pkg`. Customize the partitioning instead and you have to create those
-   four yourself; `@snapshots`, `@dockervol`, and `@containerd` are made later by the
-   installer. See [Filesystem layout](#filesystem-layout).
+2. **Disk** → Partitioning → manual btrfs subvolume layout. `best_effort` is close but
+   not right — it gives you `@pkg` at `/var/cache/pacman/pkg`, where this setup wants the
+   whole of `/var/cache`. Create these five, and `install/00-preflight.sh` will refuse to
+   run until they are all mounted:
+
+   | Subvolume | Mountpoint |
+   |---|---|
+   | `@` | `/` |
+   | `@home` | `/home` |
+   | `@log` | `/var/log` |
+   | `@cache` | `/var/cache` |
+   | `@tmp` | `/var/tmp` |
+
+   `@snapshots`, `@dockervol`, and `@containerd` are added later by the installer — it only
+   ever adds, never repartitions. See [Filesystem layout](#filesystem-layout) for why each
+   one is carved out.
 3. **Encryption** → LUKS → set a password → select your drive/partition
 4. **Bootloader** → `limine`
 5. **UKI** → confirm (ok)
@@ -28,18 +39,19 @@ After archinstall finishes and the system reboots, log in and continue below.
 
 ### Filesystem layout
 
-archinstall's `best_effort` btrfs layout is what this repo installs onto: LUKS on the root
-partition, `@` mounted at `/`, and its default subvolumes. Nothing in the installer requires
-more than a btrfs root.
+LUKS on the root partition, `@` mounted at `/`, and the subvolumes you created during
+archinstall. Beyond a btrfs root the installer adds only its own three subvolumes; it
+never repartitions or relocates one.
 
 Every subvolume is top-level and mounted from `/etc/fstab`. The finished layout:
 
 | Subvolume | Mountpoint | Created by | In root snapshots? |
 |---|---|---|---|
-| `@` | `/` | archinstall | **yes** — this is what a snapshot *is* |
-| `@home` | `/home` | archinstall | no — its own Snapper config, so a root rollback keeps your files |
-| `@log` | `/var/log` | archinstall | no — rewinding logs would erase the record of whatever you rolled back from |
-| `@pkg` | `/var/cache/pacman/pkg` | archinstall | no — a re-downloadable cache, and the largest thing that would otherwise be copied |
+| `@` | `/` | you, in archinstall | **yes** — this is what a snapshot *is* |
+| `@home` | `/home` | you, in archinstall | no — its own Snapper config, so a root rollback keeps your files |
+| `@log` | `/var/log` | you, in archinstall | no — rewinding logs would erase the record of whatever you rolled back from |
+| `@cache` | `/var/cache` | you, in archinstall | no — re-downloadable caches, and the largest thing that would otherwise be copied. The whole directory rather than just `pacman/pkg`, so any cache a future daemon invents is excluded without another migration |
+| `@tmp` | `/var/tmp` | you, in archinstall | no — per-boot scratch; must be mode `1777`, which a freshly created subvolume is not |
 | `@snapshots` | `/.snapshots` | `install/13-bootloader.sh` | no — **must** be outside `@`, or a rollback that swaps `@` takes the snapshots with it |
 | `@dockervol` | `/var/lib/docker` | `install/60-docker.sh` | no — image layers and volumes, rebuildable and huge |
 | `@containerd` | `/var/lib/containerd` | `install/60-docker.sh` | no — same |

@@ -295,6 +295,9 @@ main() {
     sudo test ! -e "/run/bunny-install/$(id -u)/pacman-hooks"
 
   check_command "root uses encrypted Btrfs" root_is_encrypted_btrfs
+  check_command "/var/cache is on @cache" subvolume_mounted @cache /var/cache
+  check_command "/var/tmp is on @tmp" subvolume_mounted @tmp /var/tmp
+  check_command "/var/tmp is mode 1777" test 1777 = "$(stat -c '%a' /var/tmp)"
   check_command "/var/lib/docker is on @dockervol" \
     subvolume_mounted @dockervol /var/lib/docker
   check_command "/var/lib/containerd is on @containerd" \

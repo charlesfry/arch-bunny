@@ -119,3 +119,32 @@ else
   error "cryptsetup not found"
   return 1
 fi
+
+# The installer only ever adds subvolumes (60-docker.sh); it never repartitions
+# or relocates one. Everything below has to come from archinstall, so fail here
+# with the exact list rather than halfway through a phase.
+step "Checking the Btrfs subvolume layout"
+subvolume_mounted() {
+  [[ $(findmnt -no OPTIONS "$2" 2>/dev/null || true) == *"subvol=/$1"* ]]
+}
+
+missing_subvolumes=()
+for entry in "@:/" "@home:/home" "@log:/var/log" "@cache:/var/cache" "@tmp:/var/tmp"; do
+  if ! subvolume_mounted "${entry%%:*}" "${entry#*:}"; then
+    missing_subvolumes+=("${entry%%:*} -> ${entry#*:}")
+  fi
+done
+
+if ((${#missing_subvolumes[@]} > 0)); then
+  error "Missing Btrfs subvolumes, create them in archinstall: ${missing_subvolumes[*]}"
+  return 1
+fi
+success "Btrfs subvolume layout confirmed"
+
+# 13-bootloader.sh relocates /.snapshots to a top-level @snapshots when it is
+# not one already, so this is a note rather than a requirement.
+if subvolume_mounted @snapshots /.snapshots; then
+  success "/.snapshots is already on @snapshots"
+else
+  log "/.snapshots is not a top-level subvolume yet; 13-bootloader.sh will relocate it"
+fi
