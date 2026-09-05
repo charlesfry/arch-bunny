@@ -23,15 +23,21 @@ format=<b>%s</b>\n<i>%b</i>
 
 # Bindings
 on-button-right=dismiss
+on-notify=exec mpv --no-config --no-video --really-quiet "$HOME/.config/mako/sound.mp3"
 
 [app-name=Spotify]
 invisible=1
-
-[mode=dnd]
-invisible=1
+on-notify=none
 
 [urgency=critical]
 default-timeout=0
 text-color=#e69cd5ff
 border-color=#bd62c5ff
 #layer=overlay
+on-notify=exec mpv --no-config --no-video --really-quiet "$HOME/.config/mako/sound-critical.mp3"
+
+# Last so it also silences criticals
+[mode=dnd]
+invisible=1
+on-notify=none
+
