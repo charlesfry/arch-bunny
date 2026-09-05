@@ -1,0 +1,9 @@
+# Machine-local git settings. Not tracked by arch-bunny.
+#
+# `git config --global ...` writes here. Repo-wide defaults live in
+# ~/.config/git/config (a symlink into the arch-bunny checkout); git reads both,
+# and anything set here wins.
+#
+# Set your identity:
+#   git config --global user.name "Your Name"
+#   git config --global user.email "you@example.com"

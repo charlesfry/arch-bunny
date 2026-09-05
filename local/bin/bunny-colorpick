@@ -1,0 +1,26 @@
+#!/bin/bash
+# Pick a colour off the screen, hex to the clipboard. Bound to Mod+Shift+Print.
+#
+# No picker dependency: `grim -t ppm` on a one-pixel region already hands us the
+# raw RGB bytes, and od turns them into hex. The header must be parsed rather
+# than skipped by a fixed offset — on a fractionally-scaled output grim rounds
+# the region up (a 1x1 request comes back 2x2), so the dimensions line varies in
+# width. The three `read`s consume exactly through their newlines because bash
+# reads a pipe a byte at a time, leaving the first pixel next in the stream.
+set -euo pipefail
+
+# Cancel guard: Escape during the pick leaves slurp non-zero with empty stdout,
+# and everything downstream would fail inside a spawn-sh with no terminal.
+sel=$(slurp -p) || exit 0
+
+{
+  read -r _magic
+  read -r _dimensions
+  read -r _maxval
+  hex=$(head -c 3 | od -An -tx1 | tr -d ' \n')
+} < <(grim -g "$sel" -t ppm -)
+
+[[ ${#hex} -eq 6 ]] || { bunny-notify -u critical "Colour pick failed"; exit 1; }
+
+printf '#%s' "$hex" | wl-copy
+bunny-notify "#$hex copied"

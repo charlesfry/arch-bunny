@@ -5,29 +5,56 @@
 # ~/.config/bunny/calendar-ics-url (Calendar Settings > pick calendar >
 # Integrate calendar).
 
-# ponytail: RRULE support only covers FREQ=DAILY and FREQ=WEEKLY;BYDAY=...
-# (INTERVAL honored, UNTIL honored, COUNT ignored/treated as unbounded).
+# ponytail: RRULE support covers FREQ=DAILY, FREQ=WEEKLY;BYDAY=... and
+# FREQ=MONTHLY;BYMONTHDAY=... (INTERVAL/UNTIL/WKST honored, COUNT ignored and
+# treated as unbounded). No YEARLY — those are all-day holidays here, which the
+# all-day filter drops anyway.
 set -Eeuo pipefail
+trap 'e=$?; echo "$0: line $LINENO exited $e" >&2' ERR
 
 config_dir=${XDG_CONFIG_HOME:-$HOME/.config}/bunny
 url_file="$config_dir/calendar-ics-url"
 [[ -r "$url_file" ]] || exit 0
-mapfile -t calendar_urls < <(grep -v '^[[:space:]]*$' "$url_file")
+
+# Skip blanks and duplicate URLs (a repeated line means fetching+parsing the
+# same calendar twice per tick).
+declare -A seen_url
+calendar_urls=()
+while read -r line || [[ -n "$line" ]]; do
+	line="${line%$'\r'}"
+	[[ -n "${line//[[:space:]]/}" ]] || continue
+	[[ -n "${seen_url["$line"]+x}" ]] && continue
+	seen_url["$line"]=1
+	calendar_urls+=("$line")
+done <"$url_file"
 ((${#calendar_urls[@]})) || exit 0
 
 state_dir=${XDG_STATE_HOME:-$HOME/.local/state}/bunny-calendar-notify
 state_file="$state_dir/notified"
 mkdir -p "$state_dir"
-touch "$state_file"
+: >>"$state_file"
+
+# Never run two copies at once: the state file is read-modify-written below, so
+# a manual run racing the timer could drop a just-recorded notification.
+exec 9>"$state_dir/.lock"
+flock -n 9 || exit 0
 
 calendar_icon=/usr/share/icons/AdwaitaLegacy/48x48/mimetypes/x-office-calendar.png
 default_lead_secs=600 # 10 min, used when an event has no VALARM
 grace_secs=3600        # don't notify for occurrences that started more than this long ago (handles suspend gaps)
 
-now=$(date +%s)
+printf -v now '%(%s)T' -1
 
-# Drop state entries older than a day so the file doesn't grow forever.
-awk -F'\t' -v cutoff=$((now - 86400)) '$2 >= cutoff' "$state_file" >"$state_file.tmp" && mv "$state_file.tmp" "$state_file"
+# Drop state entries a day after the occurrence they cover, so the file doesn't
+# grow forever. Keyed on the occurrence start (field 2 from the end of the key,
+# so a "|" inside a UID can't shift it) rather than on when the notification was
+# sent: a week-ahead reminder must stay deduped until its event has passed.
+awk -F'\t' -v cutoff=$((now - 86400)) '{n = split($1, k, "|")} n > 2 && k[n-1] >= cutoff' "$state_file" >"$state_file.tmp" && mv "$state_file.tmp" "$state_file"
+
+declare -A notified_keys
+while IFS=$'\t' read -r notified_key _; do
+	[[ -n "$notified_key" ]] && notified_keys["$notified_key"]=1
+done <"$state_file"
 
 tz_date() {
 	local tz="$1"
@@ -35,14 +62,13 @@ tz_date() {
 	if [[ -n "$tz" ]]; then TZ="$tz" date "$@"; else date "$@"; fi
 }
 
+# -> $unesc
 unescape() {
-	local s="$1"
-	s="${s//\\n/ }"
-	s="${s//\\N/ }"
-	s="${s//\\,/,}"
-	s="${s//\\;/;}"
-	s="${s//\\\\/\\}"
-	printf '%s' "$s"
+	unesc="${1//\\n/ }"
+	unesc="${unesc//\\N/ }"
+	unesc="${unesc//\\,/,}"
+	unesc="${unesc//\\;/;}"
+	unesc="${unesc//\\\\/\\}"
 }
 
 # YYYYMMDDTHHMMSS (no trailing Z — strip it and pass tz="UTC" first) -> epoch.
@@ -57,27 +83,40 @@ ics_date_to_epoch() {
 	tz_date "$tz" -d "${raw:0:4}-${raw:4:2}-${raw:6:2}" +%s
 }
 
-# Splits a DTSTART/RECURRENCE-ID field into "tz|value|is_all_day", where tz
-# is a real TZ name, "UTC" (a trailing Z on the value), or "" (floating/local).
-# The returned value never has a trailing Z — tz already captures that.
+# Splits a DTSTART/RECURRENCE-ID/EXDATE field into $sdt_tz / $sdt_value /
+# $sdt_all_day, where tz is a real TZ name, "UTC" (a trailing Z on the value),
+# or "" (floating/local). The value never keeps its trailing Z — tz has it.
+# Assigns globals rather than printing: this runs once per VEVENT and a
+# command substitution here costs a fork apiece.
 split_dt() {
-	local field="$1"
-	local params="${field%%:*}" value="${field#*:}"
+	local params="${1%%:*}"
+	sdt_value="${1#*:}"
+	sdt_tz=""
+	sdt_all_day=0
 	if [[ "$params" == *"VALUE=DATE"* && "$params" != *"VALUE=DATE-TIME"* ]]; then
-		printf '|%s|1' "$value"
+		sdt_all_day=1
 		return
 	fi
-	local tz=""
-	if [[ "$value" == *Z ]]; then
-		tz="UTC"
-		value="${value%Z}"
+	if [[ "$sdt_value" == *Z ]]; then
+		sdt_tz="UTC"
+		sdt_value="${sdt_value%Z}"
 	elif [[ "$params" =~ TZID=([^;:]+) ]]; then
-		tz="${BASH_REMATCH[1]}"
+		sdt_tz="${BASH_REMATCH[1]}"
 	fi
-	printf '%s|%s|0' "$tz" "$value"
 }
 
-# "-PT10M" etc -> signed seconds. Fails (unsupported) for absolute date-time triggers.
+# Any DTSTART-shaped field -> $sdt_epoch. Fails on unparseable values.
+field_to_epoch() {
+	split_dt "$1"
+	if ((sdt_all_day)); then
+		sdt_epoch=$(ics_date_to_epoch "$sdt_value" "$sdt_tz")
+	else
+		sdt_epoch=$(ics_time_to_epoch "$sdt_value" "$sdt_tz")
+	fi
+}
+
+# "-PT10M", "-P1W" etc -> signed seconds in $trig_secs.
+# Fails (unsupported) for absolute date-time triggers.
 trigger_seconds() {
 	local t="$1" sign=1
 	[[ "$t" == -* ]] && {
@@ -89,39 +128,72 @@ trigger_seconds() {
 	t="${t#P}"
 	local datepart="${t%%T*}" timepart="" secs=0
 	[[ "$t" == *T* ]] && timepart="${t#*T}"
+	[[ "$datepart" =~ ([0-9]+)W ]] && secs=$((secs + ${BASH_REMATCH[1]} * 604800))
 	[[ "$datepart" =~ ([0-9]+)D ]] && secs=$((secs + ${BASH_REMATCH[1]} * 86400))
 	[[ "$timepart" =~ ([0-9]+)H ]] && secs=$((secs + ${BASH_REMATCH[1]} * 3600))
 	[[ "$timepart" =~ ([0-9]+)M ]] && secs=$((secs + ${BASH_REMATCH[1]} * 60))
 	[[ "$timepart" =~ ([0-9]+)S ]] && secs=$((secs + ${BASH_REMATCH[1]}))
-	echo $((sign * secs))
+	trig_secs=$((sign * secs))
 }
 
+# Comma-joined TRIGGER lines -> $leads (seconds before start, one per VALARM).
+# Google emits one VALARM per reminder the user configured, shortest lead first,
+# so honoring only the first would drop every "1 day before" reminder.
+parse_leads() {
+	local raw="$1" t
+	leads=()
+	while [[ -n "$raw" ]]; do
+		t="${raw%%,*}"
+		[[ "$raw" == *,* ]] && raw="${raw#*,}" || raw=""
+		trigger_seconds "${t#*:}" && leads+=("$((-trig_secs))")
+	done
+	((${#leads[@]})) || leads=("$default_lead_secs")
+}
+
+# Fires one notification per due lead in $leads.
 maybe_notify() {
-	local uid="$1" start_epoch="$2" trigger_raw="$3" summary="$4" location="$5"
+	local uid="$1" start_epoch="$2" summary="$3" location="$4"
 
-	local lead=$default_lead_secs
-	if [[ -n "$trigger_raw" ]]; then
-		IFS=',' read -ra triggers <<<"$trigger_raw"
-		local first="${triggers[0]#*:}"
-		local secs
-		if secs=$(trigger_seconds "$first"); then lead=$((-secs)); fi
-	fi
-	local alarm_epoch=$((start_epoch - lead))
-
-	((alarm_epoch <= now)) || return 0
 	((start_epoch >= now - grace_secs)) || return 0
 
-	local key="$uid|$start_epoch"
-	grep -qF "$key"$'\t' "$state_file" && return 0
+	local lead alarm_epoch key when body title
+	for lead in "${leads[@]}"; do
+		alarm_epoch=$((start_epoch - lead))
+		((alarm_epoch <= now)) || continue
 
-	local when body
-	when=$(date -d "@$start_epoch" '+%-I:%M %p')
-	body="$when"
-	[[ -n "$location" ]] && body="$body — $(unescape "$location")"
+		key="$uid|$start_epoch|$lead"
+		[[ -n "${notified_keys["$key"]+x}" ]] && continue
 
-	bunny-notify -i "$calendar_icon" -a "Google Calendar" "$(unescape "$summary")" "$body"
-	printf '%s\t%s\n' "$key" "$now" >>"$state_file"
+		printf -v when '%(%-I:%M %p)T' "$start_epoch"
+		body="$when"
+		if [[ -n "$location" ]]; then
+			unescape "$location"
+			body="$body — $unesc"
+		fi
+		unescape "$summary"
+		title="$unesc"
+
+		# Record only on success so a transient notify failure retries next tick.
+		if bunny-notify -i "$calendar_icon" -a "Google Calendar" "$title" "$body"; then
+			printf '%s\t%s\n' "$key" "$now" >>"$state_file"
+			notified_keys["$key"]=1
+		fi
+	done
+	return 0
 }
+
+days_in_month() { # year month -> $dim
+	local -a mdays=(31 28 31 30 31 30 31 31 30 31 30 31)
+	dim=${mdays[$2 - 1]}
+	(($2 == 2 && ($1 % 4 == 0 && $1 % 100 != 0 || $1 % 400 == 0))) && dim=29
+	return 0
+}
+
+weekday_index() { # MO..SU -> $wdi (Monday = 0)
+	local head="${WEEKDAYS%%$1*}"
+	wdi=$((${#head} / 2))
+}
+WEEKDAYS=MOTUWETHFRSASU
 
 process_calendar() {
 	local ics_url="$1"
@@ -129,141 +201,202 @@ process_calendar() {
 	ics=$(curl -fsS --max-time 10 "$ics_url") || return 0
 	[[ -n "$ics" ]] || return 0
 
-	local -A overridden # "UID|YYYYMMDD" -> 1, from RECURRENCE-ID overrides
+	local -A overridden # "UID|occurrence_epoch" -> 1, from RECURRENCE-ID overrides
 	local -a base_events single_events
-	local uid dtstart recurid rrule exdate trigger summary location
-	local rtz rval rall tz value all_day start_epoch rec
+	local uid dtstart recurid rrule exdate trigger summary location status
+	local start_epoch rec
 
-	while IFS=$'\x1f' read -r uid dtstart recurid rrule exdate trigger summary location; do
+	while IFS=$'\x1f' read -r uid dtstart recurid rrule exdate trigger summary location status; do
 		[[ -n "$uid" && -n "$dtstart" ]] || continue
 
+		# A moved/modified instance suppresses the base occurrence it replaces.
+		# Keyed by the original occurrence's exact start epoch, so a UTC-form
+		# RECURRENCE-ID on a TZID event still lines up.
 		if [[ -n "$recurid" ]]; then
-			IFS='|' read -r rtz rval rall <<<"$(split_dt "$recurid")"
-			overridden["$uid|${rval:0:8}"]=1
+			field_to_epoch "$recurid" || continue
+			overridden["$uid|$sdt_epoch"]=1
 		fi
 
-		IFS='|' read -r tz value all_day <<<"$(split_dt "$dtstart")"
-		((all_day)) && continue
+		# A cancelled instance still suppresses the base occurrence above, but
+		# must not notify on its own.
+		[[ "$status" == "CANCELLED" ]] && continue
+
+		split_dt "$dtstart"
+		((sdt_all_day)) && continue
 
 		if [[ -n "$rrule" ]]; then
-			base_events+=("$uid"$'\x1f'"$tz"$'\x1f'"$value"$'\x1f'"$rrule"$'\x1f'"$exdate"$'\x1f'"$trigger"$'\x1f'"$summary"$'\x1f'"$location")
+			base_events+=("$uid"$'\x1f'"$sdt_tz"$'\x1f'"$sdt_value"$'\x1f'"$rrule"$'\x1f'"$exdate"$'\x1f'"$trigger"$'\x1f'"$summary"$'\x1f'"$location")
 		else
-			start_epoch=$(ics_time_to_epoch "$value" "$tz")
+			start_epoch=$(ics_time_to_epoch "$sdt_value" "$sdt_tz") || continue
 			single_events+=("$uid"$'\x1f'"$start_epoch"$'\x1f'"$trigger"$'\x1f'"$summary"$'\x1f'"$location")
 		fi
 	done < <(
-		printf '%s\n' "$ics" | awk '
+		awk -v SEP=$'\x1f' -v ESEP=$'\x1e' '
+      function reset() { uid=""; dtstart=""; summary=""; rrule=""; exdate=""; recurid=""; trigger=""; location=""; status=""; in_valarm=0 }
+      function classify(line) {
+        if (line ~ /^BEGIN:VEVENT$/) { reset(); in_event=1; return }
+        if (line ~ /^BEGIN:VALARM$/) { in_valarm=1; return }
+        if (line ~ /^END:VALARM$/) { in_valarm=0; return }
+        if (line ~ /^END:VEVENT$/) {
+          if (uid != "" && dtstart != "") {
+            gsub(SEP, " ", summary); gsub(SEP, " ", location)
+            print uid SEP dtstart SEP recurid SEP rrule SEP exdate SEP trigger SEP summary SEP location SEP status
+          }
+          in_event=0; return
+        }
+        if (!in_event) return
+        if (line ~ /^UID:/) { uid = substr(line, 5); return }
+        if (line ~ /^DTSTART/) { dtstart = line; return }
+        if (line ~ /^RECURRENCE-ID/) { recurid = line; return }
+        if (line ~ /^RRULE:/) { rrule = substr(line, 7); return }
+        if (line ~ /^EXDATE/) { exdate = (exdate == "" ? line : exdate ESEP line); return }
+        if (in_valarm) { if (line ~ /^TRIGGER/) trigger = (trigger == "" ? line : trigger "," line); return }
+        if (line ~ /^STATUS:/) { status = substr(line, 8); return }
+        if (line ~ /^SUMMARY[;:]/) { summary = line; sub(/^SUMMARY[^:]*:/, "", summary); return }
+        if (line ~ /^LOCATION[;:]/) { location = line; sub(/^LOCATION[^:]*:/, "", location); return }
+      }
+      BEGIN { reset() }
       {
         sub(/\r$/, "")
         if ($0 ~ /^[ \t]/) { sub(/^[ \t]/, ""); buf = buf $0 }
-        else { if (buf != "") print buf; buf = $0 }
+        else { if (buf != "") classify(buf); buf = $0 }
       }
-      END { if (buf != "") print buf }
-    ' | awk -v SEP="$(printf '\x1f')" '
-      function reset() { uid=""; dtstart=""; summary=""; rrule=""; exdate=""; recurid=""; trigger=""; location=""; in_valarm=0 }
-      BEGIN { reset() }
-      /^BEGIN:VEVENT$/ { reset(); in_event=1; next }
-      /^BEGIN:VALARM$/ { in_valarm=1; next }
-      /^END:VALARM$/ { in_valarm=0; next }
-      /^END:VEVENT$/ {
-        if (uid != "" && dtstart != "") {
-          gsub(SEP, " ", summary); gsub(SEP, " ", location)
-          print uid SEP dtstart SEP recurid SEP rrule SEP exdate SEP trigger SEP summary SEP location
-        }
-        in_event=0; next
-      }
-      !in_event { next }
-      /^UID:/ { uid = substr($0, 5); next }
-      /^DTSTART/ { dtstart = $0; next }
-      /^RECURRENCE-ID/ { recurid = $0; next }
-      /^RRULE:/ { rrule = substr($0, 7); next }
-      /^EXDATE/ {
-        val = $0; sub(/^EXDATE[^:]*:/, "", val)
-        exdate = (exdate == "" ? val : exdate "," val)
-        next
-      }
-      in_valarm && /^TRIGGER/ { trigger = (trigger == "" ? $0 : trigger "," $0); next }
-      /^SUMMARY:/ { summary = substr($0, 9); next }
-      /^LOCATION:/ { location = substr($0, 10); next }
-    '
+      END { if (buf != "") classify(buf) }
+    ' <<<"$ics"
 	)
 
 	for rec in "${single_events[@]}"; do
 		IFS=$'\x1f' read -r uid start_epoch trigger summary location <<<"$rec"
-		maybe_notify "$uid" "$start_epoch" "$trigger" "$summary" "$location"
+		parse_leads "$trigger"
+		maybe_notify "$uid" "$start_epoch" "$summary" "$location"
 	done
 
-	local orig_hms orig_day_epoch freq interval until_epoch until_tz u byday
-	local exdates today_epoch offset_days cand_day_epoch cand_date matches
-	local days_diff weekday orig_weekday weeks_diff skip ex cand_epoch
+	local tz value orig_hms orig_day_epoch orig_ym orig_wdi freq interval until_epoch u
+	local byday wkst wkst_wdi wdi dim lead max_lead max_off exline exv
+	local today_mid offset_days cand_day_epoch cand_date cand_dom cand_ym
+	local days_diff weekday weeks_diff matches md target cand_epoch
+	local -a exlines exvals bymonthdays
+	local -A ex_epochs
 
 	for rec in "${base_events[@]}"; do
 		IFS=$'\x1f' read -r uid tz value rrule exdate trigger summary location <<<"$rec"
 
-		orig_hms="${value:9:6}"
-		orig_day_epoch=$(ics_date_to_epoch "${value:0:8}" "$tz")
-
 		freq=""
 		[[ "$rrule" =~ FREQ=([A-Z]+) ]] && freq="${BASH_REMATCH[1]}"
-		[[ "$freq" == "DAILY" || "$freq" == "WEEKLY" ]] || continue
+		[[ "$freq" == "DAILY" || "$freq" == "WEEKLY" || "$freq" == "MONTHLY" ]] || continue
+
+		orig_hms="${value:9:6}"
+		orig_day_epoch=$(ics_date_to_epoch "${value:0:8}" "$tz") || continue
+		orig_ym=$((10#${value:0:4} * 12 + 10#${value:4:2}))
 
 		interval=1
 		[[ "$rrule" =~ INTERVAL=([0-9]+) ]] && interval="${BASH_REMATCH[1]}"
 		until_epoch=""
 		if [[ "$rrule" =~ UNTIL=([0-9TZ]+) ]]; then
 			u="${BASH_REMATCH[1]}"
-			until_tz=""
-			[[ "$u" == *Z ]] && {
-				until_tz="UTC"
-				u="${u%Z}"
-			}
-			if [[ "$u" == *T* ]]; then until_epoch=$(ics_time_to_epoch "$u" "$until_tz")
-			else until_epoch=$(ics_date_to_epoch "$u" "$until_tz")
+			if [[ "$u" == *T* ]]; then
+				field_to_epoch "UNTIL:$u" || continue
+				until_epoch=$sdt_epoch
+			else
+				# A date-only UNTIL is inclusive through the end of that day.
+				until_epoch=$(ics_date_to_epoch "$u" "$tz") || continue
+				until_epoch=$((until_epoch + 86399))
 			fi
 		fi
 		byday=""
 		[[ "$rrule" =~ BYDAY=([A-Z,]+) ]] && byday="${BASH_REMATCH[1]}"
+		# Positional BYDAY ("2SU" = second Sunday) isn't expanded here, and the
+		# capture above drops the number, so skip rather than fire on every Sunday.
+		[[ "$freq" == "MONTHLY" && "$rrule" == *BYDAY=* ]] && continue
+		wkst=MO
+		[[ "$rrule" =~ WKST=([A-Z][A-Z]) ]] && wkst="${BASH_REMATCH[1]}"
 
-		IFS=',' read -ra exdates <<<"$exdate"
-		today_epoch=$(tz_date "$tz" -d today +%s)
+		bymonthdays=("${value:6:2}") # MONTHLY defaults to DTSTART's day of month
+		[[ "$rrule" =~ BYMONTHDAY=([-0-9,]+) ]] && IFS=',' read -ra bymonthdays <<<"${BASH_REMATCH[1]}"
 
-		for offset_days in -1 0 1; do
-			cand_day_epoch=$((today_epoch + offset_days * 86400))
+		orig_wdi=0
+		if [[ "$freq" == "WEEKLY" ]]; then
+			weekday=$(tz_date "$tz" -d "@$orig_day_epoch" +%a) || continue
+			weekday=${weekday^^}
+			weekday=${weekday:0:2}
+			# RFC default when BYDAY is absent: DTSTART's own weekday.
+			[[ -n "$byday" ]] || byday="$weekday"
+			weekday_index "$weekday"
+			orig_wdi=$wdi
+			weekday_index "$wkst"
+			wkst_wdi=$wdi
+			# Weeks are counted from the WKST-aligned week start, not from
+			# DTSTART's weekday, or INTERVAL>=2 with a multi-day BYDAY drifts.
+			orig_wdi=$(((orig_wdi - wkst_wdi + 7) % 7))
+		fi
+
+		parse_leads "$trigger"
+		max_lead=0
+		for lead in "${leads[@]}"; do
+			((lead > max_lead)) && max_lead=$lead
+		done
+		# Enough candidate days ahead for the earliest alarm to be reachable.
+		max_off=$((max_lead / 86400 + 2))
+
+		# ponytail: one date fork per EXDATE value; batch through `date -f -` if
+		# a calendar ever carries hundreds of them.
+		ex_epochs=()
+		if [[ -n "$exdate" ]]; then
+			IFS=$'\x1e' read -ra exlines <<<"$exdate"
+			for exline in "${exlines[@]}"; do
+				IFS=',' read -ra exvals <<<"${exline#*:}"
+				for exv in "${exvals[@]}"; do
+					field_to_epoch "${exline%%:*}:$exv" || continue
+					ex_epochs["$sdt_epoch"]=1
+				done
+			done
+		fi
+
+		# Local midnight, then aim each candidate at local noon: adding 86400 to
+		# a midnight lands on the wrong day across a DST change, which both skips
+		# a date and throws the day/week counts off by one.
+		today_mid=$(tz_date "$tz" -d 'today 00:00' +%s) || continue
+
+		for ((offset_days = -1; offset_days <= max_off; offset_days++)); do
+			cand_day_epoch=$((today_mid + offset_days * 86400 + 43200))
 			((cand_day_epoch >= orig_day_epoch)) || continue
-			[[ -n "$until_epoch" ]] && ((cand_day_epoch > until_epoch)) && continue
-			cand_date=$(tz_date "$tz" -d "@$cand_day_epoch" +%Y%m%d)
+			read -r cand_date weekday <<<"$(tz_date "$tz" -d "@$cand_day_epoch" +'%Y%m%d %a')"
+
+			# BYDAY restricts DAILY too ("every weekday" is FREQ=DAILY;BYDAY=MO..FR).
+			weekday=${weekday^^}
+			weekday=${weekday:0:2}
+			[[ -n "$byday" && ",$byday," != *",$weekday,"* ]] && continue
 
 			matches=0
 			if [[ "$freq" == "DAILY" ]]; then
 				days_diff=$(((cand_day_epoch - orig_day_epoch) / 86400))
 				((days_diff % interval == 0)) && matches=1
-			else
-				weekday=$(tz_date "$tz" -d "@$cand_day_epoch" +%a | tr '[:lower:]' '[:upper:]' | cut -c1-2)
-				if [[ -n "$byday" ]]; then
-					[[ ",$byday," == *",$weekday,"* ]] || continue
-				else
-					orig_weekday=$(tz_date "$tz" -d "@$orig_day_epoch" +%a | tr '[:lower:]' '[:upper:]' | cut -c1-2)
-					[[ "$weekday" == "$orig_weekday" ]] || continue
-				fi
-				weeks_diff=$(((cand_day_epoch - orig_day_epoch) / 604800))
+			elif [[ "$freq" == "WEEKLY" ]]; then
+				days_diff=$(((cand_day_epoch - orig_day_epoch) / 86400))
+				weekday_index "$weekday"
+				weeks_diff=$(((days_diff - (wdi - wkst_wdi + 7) % 7 + orig_wdi) / 7))
 				((weeks_diff % interval == 0)) && matches=1
+			else
+				cand_ym=$((10#${cand_date:0:4} * 12 + 10#${cand_date:4:2}))
+				(((cand_ym - orig_ym) % interval == 0)) || continue
+				cand_dom=$((10#${cand_date:6:2}))
+				days_in_month "$((10#${cand_date:0:4}))" "$((10#${cand_date:4:2}))"
+				for md in "${bymonthdays[@]}"; do
+					if [[ "$md" == -* ]]; then target=$((dim - 10#${md#-} + 1)); else target=$((10#$md)); fi
+					((target == cand_dom)) && matches=1
+				done
 			fi
 			((matches)) || continue
 
-			skip=0
-			for ex in "${exdates[@]}"; do
-				[[ -n "$ex" && "${ex:0:8}" == "$cand_date" ]] && {
-					skip=1
-					break
-				}
-			done
-			((skip)) && continue
-			[[ -n "${overridden["$uid|$cand_date"]+x}" ]] && continue
+			cand_epoch=$(tz_date "$tz" -d "$cand_date ${orig_hms:0:2}:${orig_hms:2:2}:${orig_hms:4:2}" +%s) || continue
+			[[ -n "$until_epoch" ]] && ((cand_epoch > until_epoch)) && continue
+			[[ -n "${ex_epochs["$cand_epoch"]+x}" ]] && continue
+			[[ -n "${overridden["$uid|$cand_epoch"]+x}" ]] && continue
 
-			cand_epoch=$(tz_date "$tz" -d "$cand_date ${orig_hms:0:2}:${orig_hms:2:2}:${orig_hms:4:2}" +%s)
-			maybe_notify "$uid" "$cand_epoch" "$trigger" "$summary" "$location"
+			maybe_notify "$uid" "$cand_epoch" "$summary" "$location"
 		done
 	done
+	return 0
 }
 
 for ics_url in "${calendar_urls[@]}"; do

@@ -30,6 +30,10 @@ binds {
     Mod+Shift+G { spawn "signal-desktop"; }
     Mod+Shift+Slash { spawn "gtk-launch" "bitwarden"; }
     Mod+Shift+F { spawn "nautilus" "--new-window"; }
+    // Bunny: system menu (sound, wifi, bluetooth). Waybar only ever calls
+    // `bunny-menu power`, so without this bind the no-argument menu had no
+    // way in at all.
+    Mod+Shift+S hotkey-overlay-title="System menu" { spawn "bunny-menu"; }
     Mod+Ctrl+V { spawn-sh "cliphist list | fuzzel --dmenu | cliphist decode | wl-copy"; }
     Alt+Tab { focus-window-previous; }
     // Bunny: lock moved from stock's Super+Alt+L, since every other L combination is

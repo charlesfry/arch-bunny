@@ -1,7 +1,12 @@
 #!/bin/bash
 set -euo pipefail
 
-BAT=/sys/class/power_supply/BAT1
+# BAT1 on the Framework 13, BAT0 on most other laptops — glob rather than
+# hardcode, and take the first battery if a machine reports several. Array
+# assignment, not $(echo ...): pathname expansion happens inside the shell, so
+# this costs no fork on a path that runs once per power_supply uevent.
+batteries=(/sys/class/power_supply/BAT*)
+BAT=${batteries[0]}
 STATE_FILE=/run/bunny-battery-notify.state
 
 [[ -r "$BAT/capacity" && -r "$BAT/status" ]] || exit 0

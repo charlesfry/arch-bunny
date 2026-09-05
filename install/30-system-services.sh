@@ -31,7 +31,8 @@ sudo cp "$BUNNY_INSTALL_DEFAULTS_PATH/iwd/main.conf" /etc/iwd/main.conf
 # Battery low/critical notifications, event-driven off the power_supply
 # uevent udev already receives (no resident watcher)
 sudo mkdir -p /etc/udev/rules.d
-sudo cp "$BUNNY_INSTALL_DEFAULTS_PATH/udev/99-battery-notify.rules" /etc/udev/rules.d/99-battery-notify.rules
+sed "s|@BIN@|$HOME/.local/bin|" "$BUNNY_INSTALL_DEFAULTS_PATH/udev/99-battery-notify.rules" |
+  sudo tee /etc/udev/rules.d/99-battery-notify.rules >/dev/null
 run_logged "Reloading udev rules" \
   sudo udevadm control --reload-rules
 
