@@ -125,7 +125,9 @@ fi
 # with the exact list rather than halfway through a phase.
 step "Checking the Btrfs subvolume layout"
 subvolume_mounted() {
-  [[ $(findmnt -no OPTIONS "$2" 2>/dev/null || true) == *"subvol=/$1"* ]]
+  local opts
+  opts=$(findmnt -no OPTIONS "$2" 2>/dev/null || true)
+  [[ ,$opts, == *",subvol=/$1,"* ]]
 }
 
 missing_subvolumes=()

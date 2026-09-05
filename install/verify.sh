@@ -125,7 +125,9 @@ root_is_encrypted_btrfs() {
 # Not "does a subvolume by that name exist" but "is it the one mounted here" —
 # read through the mount options, which needs no root.
 subvolume_mounted() {
-  [[ $(findmnt -no OPTIONS "$2" 2>/dev/null || true) == *"subvol=/$1"* ]]
+  local opts
+  opts=$(findmnt -no OPTIONS "$2" 2>/dev/null || true)
+  [[ ,$opts, == *",subvol=/$1,"* ]]
 }
 
 plymouth_bunny_theme_is_selected() {
@@ -366,7 +368,7 @@ main() {
   check_command "directory MIME handler uses the installed desktop ID" \
     mime_default_is inode/directory org.gnome.Nautilus.desktop
   check_command "browser MIME handler is declarative" \
-    mime_default_is x-scheme-handler/https firefox.desktop
+    mime_default_is x-scheme-handler/https brave-browser.desktop
   check_command "text MIME handler is declarative" \
     mime_default_is text/plain nvim.desktop
   check_command "GTK 3 appearance is declarative" \
