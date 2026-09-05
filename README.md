@@ -1,4 +1,4 @@
-# :rocket: arch-bunny
+# :rabbit: arch-bunny
 
 ## Huge thanks to viacoffee, whose [dotfiles repo](https://github.com/viacoffee/dotfiles) is borrowed extensively for the install plumbing.
 
