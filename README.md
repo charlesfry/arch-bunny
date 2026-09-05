@@ -1,19 +1,66 @@
-# :rabbit: arch-bunny :rabbit:
+# :rabbit: Bunny for Arch :rabbit:
 
 ### Huge thanks to viacoffee, whose [dotfiles repo](https://github.com/viacoffee/dotfiles) is borrowed extensively for the install plumbing.
 
+## What this repo is
+
+Bunny is an opinionated Arch Linux setup optimized for a data science workflow.
+Like its namesake, :rabbit: arch-bunny is designed to be both **Fast** and **Light**,
+while providing a setup that a vim-loving data scientist can immediately begin
+working with. Every unnecessary moment between your keypress and the computer's
+response can reliably introduce distractions and break your flow. Bunny brings you what
+you need about as quickly as the bare metal can make possible.
+
+## What this Arch setup is capable of out-of-the-box
+
+- A blazing-fast terminal
+- A vim-keybound compositor
+- Lazyvim with handcrafted bindings and carefully selected plugins for python
+development and jupyter notebook integration
+- python development with `conda`
+- docker and docker-compose
+- extremely tiny snapshots for reliable rollback
+- LUKS full-disk encryption, and a one-command factory reset back to the
+  finished-install snapshot
+- `bunny-dev` for optional dev environments, direnv wired into the shell, and
+  tmux-sessionizer to fzf into any project as its own session
+- screenshots with annotation, screen recording, and a colour picker, all on keybinds
+- battery and Google Calendar notifications with no polling daemon and no API keys
+- ufw, with ufw-docker closing Docker's iptables bypass
+- a post-boot idle under 1GiB of RAM
+![Idle RAM usage of this setup is measured in Megabytes: 1020 MiB of 14.9 GiB](assets/pictures/idleRamScreenshot.png)
+
+
+## Core Opinions
+
+- The best feature is "It works"
+- The second best feature is "It's fast"
+
+Any "user-friendly feature" which gets in the way of the first two is discarded.
+
+All animations exist for at least one of two reasons:
+
+- To orient your movement in compositor space, and is as short as can be reliably registered mentally
+- To draw your attention towards a portion of the screen
+
+All else is cruft.
+
+This setup discards all bloated "user-friendly" daemons, all RAM-hogging IDEs, and any transition longer than a tiny fraction of a second.
+
+Windows recommends a minimum of 8GiB of RAM. Macs start at 16. Bunny's post-startup idle is measured in Megabytes.
+
+
+## Motivation
+
+
 ## Installation
 
-This is an Arch Linux setup. Start with [archinstall](https://wiki.archlinux.org/title/Archinstall), then run the bootstrap command below after the first reboot. The command installs curl, and the bootstrap script installs Git when needed, clones this repository, and starts `install.sh` after confirmation.
+Start with [archinstall](https://wiki.archlinux.org/title/Archinstall), then run the bootstrap command below after the first reboot. The command installs curl, and the bootstrap script installs Git when needed, clones this repository, and starts `install.sh` after confirmation.
 
 ### Initial setup (archinstall)
 
-1. **Mirror select** — choose `us`
-2. **Disk** → Partitioning → manual btrfs subvolume layout. `best_effort` is close but
-   not right — it gives you `@pkg` at `/var/cache/pacman/pkg`, where this setup wants the
-   whole of `/var/cache`. Create these five, and `install/00-preflight.sh` will refuse to
-   run until they are all mounted:
-
+1. **Mirror select**: choose `us`
+2. **Disk** → Partitioning → manual btrfs subvolume layout. Create these five, `install/00-preflight.sh` will refuse to run until they are all mounted:
    | Subvolume | Mountpoint |
    |---|---|
    | `@` | `/` |
@@ -22,16 +69,20 @@ This is an Arch Linux setup. Start with [archinstall](https://wiki.archlinux.org
    | `@cache` | `/var/cache` |
    | `@tmp` | `/var/tmp` |
 
-   `@snapshots`, `@dockervol`, and `@containerd` are added later by the installer — it only
-   ever adds, never repartitions. See [Filesystem layout](#filesystem-layout) for why each
-   one is carved out.
+   `@snapshots`, `@dockervol`, and `@containerd` are added later by the installer. It only
+   ever adds, never repartitions. See [Filesystem layout](#filesystem-layout) for why each one is carved out.
 3. **Encryption** → LUKS → set a password → select your drive/partition
 4. **Bootloader** → `limine`
 5. **UKI** → confirm (ok)
-6. **NetworkManager** → iwd Backend — pick this to get a working network for the
-   install. `install/30-system-services.sh` later disables NetworkManager and moves the
-   system to systemd-networkd (ethernet) plus iwd (Wi-Fi); the archinstall choice only
-   has to survive the first boot.
+6. **Network configuration** → Copy ISO configuration. This copies the live
+   environment's `/var/lib/iwd/*.psk` and `/etc/systemd/network` into the installed
+   system and enables iwd, systemd-networkd and systemd-resolved, which is the same
+   setup `install/30-system-services.sh` ends up with. NetworkManager also works, but
+   it is an extra package the installer then has to disable. Either way the archinstall
+   choice only has to carry the first boot, far enough to run the bootstrap below.
+   Archinstall enables iwd only when you connected with `iwctl` in the live
+   environment, so if you install over ethernet, Wi-Fi stays down until
+   `30-system-services.sh` runs.
 7. **Additional packages** → add `pipewire` and `git`
 8. **Timezone** → select your preferred region
 
@@ -40,35 +91,35 @@ After archinstall finishes and the system reboots, log in and continue below.
 ### Filesystem layout
 
 LUKS on the root partition, `@` mounted at `/`, and the subvolumes you created during
-archinstall. Beyond a btrfs root the installer adds only its own three subvolumes; it
+archinstall. The installer adds only its own three subvolumes. It
 never repartitions or relocates one.
 
 Every subvolume is top-level and mounted from `/etc/fstab`. The finished layout:
 
 | Subvolume | Mountpoint | Created by | In root snapshots? |
 |---|---|---|---|
-| `@` | `/` | you, in archinstall | **yes** — this is what a snapshot *is* |
-| `@home` | `/home` | you, in archinstall | no — its own Snapper config, so a root rollback keeps your files |
-| `@log` | `/var/log` | you, in archinstall | no — rewinding logs would erase the record of whatever you rolled back from |
-| `@cache` | `/var/cache` | you, in archinstall | no — re-downloadable caches, and the largest thing that would otherwise be copied. The whole directory rather than just `pacman/pkg`, so any cache a future daemon invents is excluded without another migration |
-| `@tmp` | `/var/tmp` | you, in archinstall | no — per-boot scratch; must be mode `1777`, which a freshly created subvolume is not |
-| `@snapshots` | `/.snapshots` | `install/13-bootloader.sh` | no — **must** be outside `@`, or a rollback that swaps `@` takes the snapshots with it |
-| `@dockervol` | `/var/lib/docker` | `install/60-docker.sh` | no — image layers and volumes, rebuildable and huge |
-| `@containerd` | `/var/lib/containerd` | `install/60-docker.sh` | no — same |
+| `@` | `/` | you, in archinstall | **yes**, this is what a snapshot *is* |
+| `@home` | `/home` | you, in archinstall | no, it has its own Snapper config, so a root rollback keeps your files |
+| `@log` | `/var/log` | you, in archinstall | no |
+| `@cache` | `/var/cache` | you, in archinstall | no |
+| `@tmp` | `/var/tmp` | you, in archinstall | no |
+| `@snapshots` | `/.snapshots` | `install/13-bootloader.sh` | no. It **must** be outside `@`, or a rollback that swaps `@` takes the snapshots with it |
+| `@dockervol` | `/var/lib/docker` | `install/60-docker.sh` | no. image layers and volumes are rebuildable and huge |
+| `@containerd` | `/var/lib/containerd` | `install/60-docker.sh` | no, same as above |
 
 Snapper puts `/.snapshots` inside `@` by default. `13-bootloader.sh` creates `@snapshots`
-at the top level and remounts it there, which is the single thing that makes the factory
-reset below survivable: the snapshots are not stored inside the subvolume being replaced.
+at the top level and remounts it there, which is what makes the factory reset below
+work: the snapshots are not stored inside the subvolume being replaced.
 
 `60-docker.sh` refuses to run if `/var/lib/docker` or `/var/lib/containerd` already holds
-data outside its subvolume, rather than mounting over it and hiding those bytes.
+data outside its subvolume, rather than mounting over it and hiding that data.
 
-Two Snapper configs run independently: `root` covers `/` — packages, `/etc`, everything in
-`@` — and `home` covers `/home`, its snapshots nested inside `@home`. Rolling back `root`
+Two Snapper configs run independently: `root` covers `/` (packages, `/etc`, everything in
+`@`) and `home` covers `/home`, its snapshots nested inside `@home`. Rolling back `root`
 rewinds the system and leaves your files alone; restoring from `home` recovers files
 without reverting the system.
 
-Neither takes snapshots on a timer — `13-bootloader.sh` sets `TIMELINE_CREATE="no"` and
+Neither takes snapshots on a timer. `13-bootloader.sh` sets `TIMELINE_CREATE="no"` and
 keeps the last 5 per config. They happen when you run `bunny-snapshot create`, which
 snapshots both, plus the one-off factory snapshot below.
 
@@ -106,7 +157,7 @@ sudo snapper -c root rollback <number>
 sudo systemctl reboot
 ```
 
-This rolls back `/` only — `home` is a separate config, so a reset keeps your files.
+This rolls back `/` only. `home` is a separate config, so a reset keeps your files.
 
 ## Keyboard Shortcuts
 
@@ -129,7 +180,6 @@ itself; this table mirrors [`config/niri/bindings.kdl`](config/niri/bindings.kdl
 | `Mod+Shift+Slash` | Bitwarden |
 | `Mod+Shift+F` | Nautilus, new window |
 | `Mod+Shift+S` | System menu (sound, Wi-Fi, Bluetooth) |
-| `Mod+Shift+Space` | Hivemind prompt — a text prompt that runs your query in a floating terminal |
 | `Mod+Ctrl+V` | Clipboard history (cliphist through fuzzel) |
 | `Mod+Comma` | Dismiss the top notification |
 | `Mod+Shift+Comma` | Dismiss all notifications |
@@ -184,7 +234,7 @@ itself; this table mirrors [`config/niri/bindings.kdl`](config/niri/bindings.kdl
 | `Mod+W` | Close window |
 | `Mod+F` | Maximize column |
 | `Shift+F11` | Fullscreen window |
-| `Mod+M` | Maximize window to the screen edges |
+| `Mod+M` | Toggle maximize window to the screen edges |
 | `Mod+Ctrl+F` | Expand column into the free space |
 | `Mod+C` | Center the column |
 | `Mod+Ctrl+C` | Center all visible columns |
@@ -236,7 +286,7 @@ overlay; the step size and the 100% cap live in `config/niri/bindings.kdl` and
 | Shortcut | Action |
 |---|---|
 | `Mod+Shift+P` | Power off the monitors (any input wakes them) |
-| `Mod+Shift+Escape` | Toggle keyboard-shortcut inhibiting — the one bind that always works |
+| `Mod+Shift+Escape` | Toggle keyboard-shortcut inhibiting, the one bind that always works |
 | `Mod+Shift+E` | Quit niri, with a confirmation dialog |
 | `Ctrl+Alt+Delete` | Quit niri, with a confirmation dialog |
 
@@ -249,12 +299,12 @@ indicator for `bunny-toggle-idle`, the notification indicator for
 module for `bunny-launch-wifi`, and the battery module for `bunny-menu power`.
 
 The bar also carries read-only indicators for webcam and screen-share activity, a
-workspace-position dot strip (`niri-window-position`), and a weather module — see
-[Weather](#weather) below, which needs one command to set up.
+workspace-position dot strip (`niri-window-position`), and a weather module (see
+[Weather](#weather) below, which needs one command to set up).
 
 ## Commands
 
-Scripts with no keyboard shortcut or menu entry — invoke these manually from a terminal.
+Scripts with no keyboard shortcut or menu entry. Invoke these manually from a terminal.
 
 | Command | Description |
 |---|---|
@@ -274,12 +324,12 @@ Two things generate desktop notifications on their own, both through `bunny-noti
 into mako:
 
 **Battery.** A udev rule on the kernel `power_supply` uevent (`install/default/udev/`)
-runs `bunny-battery-notify` — a warning at 20% and a critical one at 5%, while
+runs `bunny-battery-notify`: a warning at 20% and a critical one at 5%, while
 discharging only. No polling timer and no resident watcher; the event already fires.
 
 **Calendar.** `bunny-calendar-notify.timer` polls every 60s for upcoming Google Calendar
 events and notifies at each event's own reminder time (10 minutes when the event sets
-none). It needs no API credentials or extra packages — it reads private iCal URLs.
+none). It needs no API credentials or extra packages, just private iCal URLs.
 To set it up, put one "secret address in iCal format" URL per line in
 `~/.config/bunny/calendar-ics-url` (Google Calendar → Settings → pick a calendar →
 Integrate calendar), then:
@@ -301,7 +351,7 @@ connected SSID up in `~/.config/bunny/wifi-locations.json` and writes the mapped
 location. Register the network you are on with:
 
 ```bash
-bunny-update-location --add "Portland, OR"
+bunny-update-location --add "Pittsburgh,PA,15213" # zip codes, states, cities all work
 ```
 
 On an unmapped SSID the module shows a hint to run that; with no network at all it
@@ -315,17 +365,17 @@ Bash, with `nvim` as `EDITOR`, starship for the prompt, and direnv hooked in.
 |---|---|
 | `vi` | `nvim` |
 | `clear` | Clears the screen *and* the scrollback buffer (`\e[3J`), which plain `clear` leaves behind |
-| `conda` | Lazy stub — sources miniforge's `conda.sh` on first call, so shell startup pays nothing |
+| `conda` | Lazy stub that sources miniforge's `conda.sh` on first call, so shell startup pays nothing |
 | `gu` | Stash, check out the repo's default branch (`main` or `master`), pull, return to your branch, pop |
 | `gur` | `gu`, then rebase onto the default branch |
 | `guri` | `gu`, then interactive rebase onto the default branch |
 
-`~/.personal.bashrc` is sourced last if it exists, and is never tracked by git.
+`~/.bashrc.local` is sourced last if it exists, and is never tracked by git. The installer creates it.
 
 Up and Down filter history to lines starting with what you have already typed
 (`~/.inputrc`); an empty line behaves like ordinary previous/next history.
 
-Git ships a few aliases of its own — `co`, `br`, `ci`, `st` — plus rebase-on-pull,
+Git ships a few aliases of its own (`co`, `br`, `ci`, `st`), plus rebase-on-pull,
 `autoSetupRemote` on push, and `gh` as the credential helper. Set your identity the
 ordinary way:
 
@@ -334,18 +384,18 @@ git config --global user.name "Your Name"
 git config --global user.email "you@example.com"
 ```
 
-That deliberately does *not* write into this repo. Git's global config is
+That does *not* write into this repo. Git's global config is
 `~/.gitconfig` when that file exists and `~/.config/git/config` only when it does
-not — and the latter is a symlink to the tracked file, so on a bare setup a plain
+not, and the latter is a symlink to the tracked file, so on a bare setup a plain
 `--global` write would commit your name and email into arch-bunny. `install/20-dotfiles.sh`
-creates `~/.gitconfig` for exactly that reason. Git reads both files, and anything in
+creates `~/.gitconfig` for that reason. Git reads both files, and anything in
 `~/.gitconfig` wins, so it is also where any other machine-local override belongs.
 
 ## tmux
 
 | Binding | Action |
 |---|---|
-| `prefix+f` | `tmux-sessionizer` — fzf a project directory, then create or attach a session named for it |
+| `prefix+f` | `tmux-sessionizer`: fzf a project directory, then create or attach a session named for it |
 
 Sessions are named `<dir>-<hash>`, so same-named directories in different trees stay
 distinct.
@@ -354,8 +404,8 @@ distinct.
 
 | Category | Tools |
 |---|---|
-| **Compositor** | [niri](https://github.com/YaLTeR/niri) — scrollable-tiling Wayland compositor |
-| **Session manager** | [uwsm](https://github.com/Vladimir-csp/uwsm) — Universal Wayland Session Manager |
+| **Compositor** | [niri](https://github.com/YaLTeR/niri), a scrollable-tiling Wayland compositor |
+| **Session manager** | [uwsm](https://github.com/Vladimir-csp/uwsm), the Universal Wayland Session Manager |
 | **Login manager** | [greetd](https://sr.ht/~kennylevinsen/greetd/) |
 | **Terminal** | [kitty](https://sw.kovidgoyal.net/kitty/) |
 | **Bar** | [Waybar](https://github.com/Alexays/Waybar) |
@@ -378,7 +428,7 @@ distinct.
 | **File listing** | [lsd](https://github.com/lsd-rs/lsd) |
 | **Snapshots** | [snapper](https://github.com/openSUSE/snapper) + limine-snapper-sync, on the subvolume layout above |
 | **Containers** | [Docker](https://www.docker.com/) + docker-compose, on their own snapshot-excluded subvolumes, with [ufw-docker](https://github.com/chaifeng/ufw-docker) closing Docker's iptables bypass |
-| **Browser** | [Brave](https://brave.com/) (`brave-bin`, built from the AUR by `install/14-aur.sh`) · Firefox |
+| **Browser** | [Brave](https://brave.com/) (`brave-bin`, built from the AUR by `install/14-aur.sh`) · with Firefox as a fallback |
 | **Bootloader** | [limine](https://limine-bootloader.org/) |
 | **Disk encryption** | LUKS via cryptsetup |
 | **Firewall** | [ufw](https://wiki.archlinux.org/title/Uncomplicated_Firewall) |
