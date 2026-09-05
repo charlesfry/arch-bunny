@@ -25,6 +25,7 @@
   "modules-right": [
     "custom/niri-window-position",
     "tray",
+    "pulseaudio",
     "network",
     "battery"
   ]

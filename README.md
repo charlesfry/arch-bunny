@@ -211,15 +211,18 @@ itself; this table mirrors [`config/niri/bindings.kdl`](config/niri/bindings.kdl
 
 | Shortcut | Action |
 |---|---|
-| `XF86AudioRaiseVolume` | Volume up (capped at 100%) |
-| `XF86AudioLowerVolume` | Volume down |
-| `XF86AudioMute` | Mute/unmute output |
-| `XF86AudioMicMute` | Mute/unmute microphone |
+| `XF86AudioRaiseVolume` | Volume +10%, capped at 100%, with an on-screen level popup |
+| `XF86AudioLowerVolume` | Volume −10%, with an on-screen level popup |
+| `XF86AudioMute` | Mute/unmute output, with an on-screen popup |
+| `XF86AudioMicMute` | Mute/unmute microphone, with an on-screen popup |
 | `XF86AudioPlay` | Play/pause |
 | `XF86AudioStop` | Stop |
 | `XF86AudioPrev` / `XF86AudioNext` | Previous/next track |
 
-All of these keep working while the session is locked.
+All of these keep working while the session is locked. The volume and mute keys go through
+[swayosd](https://github.com/ErikReider/SwayOSD), which applies the change and draws the
+overlay; the step size and the 100% cap live in `config/niri/bindings.kdl` and
+`config/swayosd/config.toml` respectively.
 
 ### Brightness
 
@@ -242,8 +245,8 @@ All of these keep working while the session is locked.
 Some actions have no keybinding and live in the bar instead: click the idle
 indicator for `bunny-toggle-idle`, the notification indicator for
 `bunny-toggle-dnd`, the recording indicator for `bunny-cmd-screenrecord`
-(gpu-screen-recorder, toggles), the network module for `bunny-launch-wifi`, and
-the battery module for `bunny-menu power`.
+(gpu-screen-recorder, toggles), the volume module to mute/unmute, the network
+module for `bunny-launch-wifi`, and the battery module for `bunny-menu power`.
 
 The bar also carries read-only indicators for webcam and screen-share activity, a
 workspace-position dot strip (`niri-window-position`), and a weather module — see

@@ -27,6 +27,7 @@ window#waybar {
 
 #tray,
 #battery,
+#pulseaudio,
 #network,
 #workspaces,
 #custom-idle-indicator,
@@ -43,6 +44,7 @@ window#waybar {
 
 #tray,
 #battery,
+#pulseaudio,
 #network {
   opacity: 0.7;
   color: #98a2b0;
@@ -51,6 +53,10 @@ window#waybar {
 }
 
 #network.disconnected {
+  color: #d26f66;
+}
+
+#pulseaudio.muted {
   color: #d26f66;
 }
 

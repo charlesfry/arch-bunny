@@ -78,6 +78,17 @@
     "signal": 8,
     "return-type": "json"
   },
+  "pulseaudio": {
+    "format": "{icon}",
+    "format-muted": "󰝟",
+    "format-icons": {
+      "default": ["󰕿", "󰖀", "󰕾"],
+      "headphone": "󰋋",
+      "headset": "󰋎"
+    },
+    "tooltip-format": "{desc} · {volume}%",
+    "on-click": "swayosd-client --output-volume mute-toggle"
+  },
   "network": {
     "interval": 5,
     "format-wifi": "{icon}",
