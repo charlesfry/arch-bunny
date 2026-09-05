@@ -1,15 +1,11 @@
 #!/bin/bash
 
 if [[ "$1" == power ]]; then
-  options="  Lock
-  Restart
-  Shutdown"
-
-  case $(bunny-launch-menu "" <<< "$options") in
-    *Lock*)     bunny-cmd-lock ;;
-    *Restart*)  bunny-cmd-reboot ;;
-    *Shutdown*) bunny-cmd-shutdown ;;
-  esac
+  batteries=(/sys/class/power_supply/BAT*)
+  BAT=${batteries[0]}
+  status=$(<"$BAT/status")
+  [[ $status == Discharging ]] && status=""
+  bunny-notify "Battery Level" "$(<"$BAT/capacity")% ${status:+ $status}" --expire-time 3000
   exit
 fi
 
