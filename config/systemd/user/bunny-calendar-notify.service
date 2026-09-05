@@ -1,0 +1,6 @@
+[Unit]
+Description=Notify about upcoming Google Calendar events
+
+[Service]
+Type=oneshot
+ExecStart=%h/.local/bin/bunny-calendar-notify

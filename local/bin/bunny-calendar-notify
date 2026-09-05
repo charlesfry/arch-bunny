@@ -1,0 +1,271 @@
+#!/bin/bash
+# Notify about upcoming Google Calendar events via bunny-notify.
+#
+# Reads private "secret address in iCal format" URLs, one per line, from
+# ~/.config/bunny/calendar-ics-url (Calendar Settings > pick calendar >
+# Integrate calendar).
+
+# ponytail: RRULE support only covers FREQ=DAILY and FREQ=WEEKLY;BYDAY=...
+# (INTERVAL honored, UNTIL honored, COUNT ignored/treated as unbounded).
+set -Eeuo pipefail
+
+config_dir=${XDG_CONFIG_HOME:-$HOME/.config}/bunny
+url_file="$config_dir/calendar-ics-url"
+[[ -r "$url_file" ]] || exit 0
+mapfile -t calendar_urls < <(grep -v '^[[:space:]]*$' "$url_file")
+((${#calendar_urls[@]})) || exit 0
+
+state_dir=${XDG_STATE_HOME:-$HOME/.local/state}/bunny-calendar-notify
+state_file="$state_dir/notified"
+mkdir -p "$state_dir"
+touch "$state_file"
+
+calendar_icon=/usr/share/icons/AdwaitaLegacy/48x48/mimetypes/x-office-calendar.png
+default_lead_secs=600 # 10 min, used when an event has no VALARM
+grace_secs=3600        # don't notify for occurrences that started more than this long ago (handles suspend gaps)
+
+now=$(date +%s)
+
+# Drop state entries older than a day so the file doesn't grow forever.
+awk -F'\t' -v cutoff=$((now - 86400)) '$2 >= cutoff' "$state_file" >"$state_file.tmp" && mv "$state_file.tmp" "$state_file"
+
+tz_date() {
+	local tz="$1"
+	shift
+	if [[ -n "$tz" ]]; then TZ="$tz" date "$@"; else date "$@"; fi
+}
+
+unescape() {
+	local s="$1"
+	s="${s//\\n/ }"
+	s="${s//\\N/ }"
+	s="${s//\\,/,}"
+	s="${s//\\;/;}"
+	s="${s//\\\\/\\}"
+	printf '%s' "$s"
+}
+
+# YYYYMMDDTHHMMSS (no trailing Z — strip it and pass tz="UTC" first) -> epoch.
+ics_time_to_epoch() {
+	local raw="$1" tz="$2"
+	tz_date "$tz" -d "${raw:0:4}-${raw:4:2}-${raw:6:2} ${raw:9:2}:${raw:11:2}:${raw:13:2}" +%s
+}
+
+# YYYYMMDD -> epoch at local midnight, honoring tz.
+ics_date_to_epoch() {
+	local raw="$1" tz="$2"
+	tz_date "$tz" -d "${raw:0:4}-${raw:4:2}-${raw:6:2}" +%s
+}
+
+# Splits a DTSTART/RECURRENCE-ID field into "tz|value|is_all_day", where tz
+# is a real TZ name, "UTC" (a trailing Z on the value), or "" (floating/local).
+# The returned value never has a trailing Z — tz already captures that.
+split_dt() {
+	local field="$1"
+	local params="${field%%:*}" value="${field#*:}"
+	if [[ "$params" == *"VALUE=DATE"* && "$params" != *"VALUE=DATE-TIME"* ]]; then
+		printf '|%s|1' "$value"
+		return
+	fi
+	local tz=""
+	if [[ "$value" == *Z ]]; then
+		tz="UTC"
+		value="${value%Z}"
+	elif [[ "$params" =~ TZID=([^;:]+) ]]; then
+		tz="${BASH_REMATCH[1]}"
+	fi
+	printf '%s|%s|0' "$tz" "$value"
+}
+
+# "-PT10M" etc -> signed seconds. Fails (unsupported) for absolute date-time triggers.
+trigger_seconds() {
+	local t="$1" sign=1
+	[[ "$t" == -* ]] && {
+		sign=-1
+		t="${t#-}"
+	}
+	[[ "$t" == +* ]] && t="${t#+}"
+	[[ "$t" == P* ]] || return 1
+	t="${t#P}"
+	local datepart="${t%%T*}" timepart="" secs=0
+	[[ "$t" == *T* ]] && timepart="${t#*T}"
+	[[ "$datepart" =~ ([0-9]+)D ]] && secs=$((secs + ${BASH_REMATCH[1]} * 86400))
+	[[ "$timepart" =~ ([0-9]+)H ]] && secs=$((secs + ${BASH_REMATCH[1]} * 3600))
+	[[ "$timepart" =~ ([0-9]+)M ]] && secs=$((secs + ${BASH_REMATCH[1]} * 60))
+	[[ "$timepart" =~ ([0-9]+)S ]] && secs=$((secs + ${BASH_REMATCH[1]}))
+	echo $((sign * secs))
+}
+
+maybe_notify() {
+	local uid="$1" start_epoch="$2" trigger_raw="$3" summary="$4" location="$5"
+
+	local lead=$default_lead_secs
+	if [[ -n "$trigger_raw" ]]; then
+		IFS=',' read -ra triggers <<<"$trigger_raw"
+		local first="${triggers[0]#*:}"
+		local secs
+		if secs=$(trigger_seconds "$first"); then lead=$((-secs)); fi
+	fi
+	local alarm_epoch=$((start_epoch - lead))
+
+	((alarm_epoch <= now)) || return 0
+	((start_epoch >= now - grace_secs)) || return 0
+
+	local key="$uid|$start_epoch"
+	grep -qF "$key"$'\t' "$state_file" && return 0
+
+	local when body
+	when=$(date -d "@$start_epoch" '+%-I:%M %p')
+	body="$when"
+	[[ -n "$location" ]] && body="$body — $(unescape "$location")"
+
+	bunny-notify -i "$calendar_icon" -a "Google Calendar" "$(unescape "$summary")" "$body"
+	printf '%s\t%s\n' "$key" "$now" >>"$state_file"
+}
+
+process_calendar() {
+	local ics_url="$1"
+	local ics
+	ics=$(curl -fsS --max-time 10 "$ics_url") || return 0
+	[[ -n "$ics" ]] || return 0
+
+	local -A overridden # "UID|YYYYMMDD" -> 1, from RECURRENCE-ID overrides
+	local -a base_events single_events
+	local uid dtstart recurid rrule exdate trigger summary location
+	local rtz rval rall tz value all_day start_epoch rec
+
+	while IFS=$'\x1f' read -r uid dtstart recurid rrule exdate trigger summary location; do
+		[[ -n "$uid" && -n "$dtstart" ]] || continue
+
+		if [[ -n "$recurid" ]]; then
+			IFS='|' read -r rtz rval rall <<<"$(split_dt "$recurid")"
+			overridden["$uid|${rval:0:8}"]=1
+		fi
+
+		IFS='|' read -r tz value all_day <<<"$(split_dt "$dtstart")"
+		((all_day)) && continue
+
+		if [[ -n "$rrule" ]]; then
+			base_events+=("$uid"$'\x1f'"$tz"$'\x1f'"$value"$'\x1f'"$rrule"$'\x1f'"$exdate"$'\x1f'"$trigger"$'\x1f'"$summary"$'\x1f'"$location")
+		else
+			start_epoch=$(ics_time_to_epoch "$value" "$tz")
+			single_events+=("$uid"$'\x1f'"$start_epoch"$'\x1f'"$trigger"$'\x1f'"$summary"$'\x1f'"$location")
+		fi
+	done < <(
+		printf '%s\n' "$ics" | awk '
+      {
+        sub(/\r$/, "")
+        if ($0 ~ /^[ \t]/) { sub(/^[ \t]/, ""); buf = buf $0 }
+        else { if (buf != "") print buf; buf = $0 }
+      }
+      END { if (buf != "") print buf }
+    ' | awk -v SEP="$(printf '\x1f')" '
+      function reset() { uid=""; dtstart=""; summary=""; rrule=""; exdate=""; recurid=""; trigger=""; location=""; in_valarm=0 }
+      BEGIN { reset() }
+      /^BEGIN:VEVENT$/ { reset(); in_event=1; next }
+      /^BEGIN:VALARM$/ { in_valarm=1; next }
+      /^END:VALARM$/ { in_valarm=0; next }
+      /^END:VEVENT$/ {
+        if (uid != "" && dtstart != "") {
+          gsub(SEP, " ", summary); gsub(SEP, " ", location)
+          print uid SEP dtstart SEP recurid SEP rrule SEP exdate SEP trigger SEP summary SEP location
+        }
+        in_event=0; next
+      }
+      !in_event { next }
+      /^UID:/ { uid = substr($0, 5); next }
+      /^DTSTART/ { dtstart = $0; next }
+      /^RECURRENCE-ID/ { recurid = $0; next }
+      /^RRULE:/ { rrule = substr($0, 7); next }
+      /^EXDATE/ {
+        val = $0; sub(/^EXDATE[^:]*:/, "", val)
+        exdate = (exdate == "" ? val : exdate "," val)
+        next
+      }
+      in_valarm && /^TRIGGER/ { trigger = (trigger == "" ? $0 : trigger "," $0); next }
+      /^SUMMARY:/ { summary = substr($0, 9); next }
+      /^LOCATION:/ { location = substr($0, 10); next }
+    '
+	)
+
+	for rec in "${single_events[@]}"; do
+		IFS=$'\x1f' read -r uid start_epoch trigger summary location <<<"$rec"
+		maybe_notify "$uid" "$start_epoch" "$trigger" "$summary" "$location"
+	done
+
+	local orig_hms orig_day_epoch freq interval until_epoch until_tz u byday
+	local exdates today_epoch offset_days cand_day_epoch cand_date matches
+	local days_diff weekday orig_weekday weeks_diff skip ex cand_epoch
+
+	for rec in "${base_events[@]}"; do
+		IFS=$'\x1f' read -r uid tz value rrule exdate trigger summary location <<<"$rec"
+
+		orig_hms="${value:9:6}"
+		orig_day_epoch=$(ics_date_to_epoch "${value:0:8}" "$tz")
+
+		freq=""
+		[[ "$rrule" =~ FREQ=([A-Z]+) ]] && freq="${BASH_REMATCH[1]}"
+		[[ "$freq" == "DAILY" || "$freq" == "WEEKLY" ]] || continue
+
+		interval=1
+		[[ "$rrule" =~ INTERVAL=([0-9]+) ]] && interval="${BASH_REMATCH[1]}"
+		until_epoch=""
+		if [[ "$rrule" =~ UNTIL=([0-9TZ]+) ]]; then
+			u="${BASH_REMATCH[1]}"
+			until_tz=""
+			[[ "$u" == *Z ]] && {
+				until_tz="UTC"
+				u="${u%Z}"
+			}
+			if [[ "$u" == *T* ]]; then until_epoch=$(ics_time_to_epoch "$u" "$until_tz")
+			else until_epoch=$(ics_date_to_epoch "$u" "$until_tz")
+			fi
+		fi
+		byday=""
+		[[ "$rrule" =~ BYDAY=([A-Z,]+) ]] && byday="${BASH_REMATCH[1]}"
+
+		IFS=',' read -ra exdates <<<"$exdate"
+		today_epoch=$(tz_date "$tz" -d today +%s)
+
+		for offset_days in -1 0 1; do
+			cand_day_epoch=$((today_epoch + offset_days * 86400))
+			((cand_day_epoch >= orig_day_epoch)) || continue
+			[[ -n "$until_epoch" ]] && ((cand_day_epoch > until_epoch)) && continue
+			cand_date=$(tz_date "$tz" -d "@$cand_day_epoch" +%Y%m%d)
+
+			matches=0
+			if [[ "$freq" == "DAILY" ]]; then
+				days_diff=$(((cand_day_epoch - orig_day_epoch) / 86400))
+				((days_diff % interval == 0)) && matches=1
+			else
+				weekday=$(tz_date "$tz" -d "@$cand_day_epoch" +%a | tr '[:lower:]' '[:upper:]' | cut -c1-2)
+				if [[ -n "$byday" ]]; then
+					[[ ",$byday," == *",$weekday,"* ]] || continue
+				else
+					orig_weekday=$(tz_date "$tz" -d "@$orig_day_epoch" +%a | tr '[:lower:]' '[:upper:]' | cut -c1-2)
+					[[ "$weekday" == "$orig_weekday" ]] || continue
+				fi
+				weeks_diff=$(((cand_day_epoch - orig_day_epoch) / 604800))
+				((weeks_diff % interval == 0)) && matches=1
+			fi
+			((matches)) || continue
+
+			skip=0
+			for ex in "${exdates[@]}"; do
+				[[ -n "$ex" && "${ex:0:8}" == "$cand_date" ]] && {
+					skip=1
+					break
+				}
+			done
+			((skip)) && continue
+			[[ -n "${overridden["$uid|$cand_date"]+x}" ]] && continue
+
+			cand_epoch=$(tz_date "$tz" -d "$cand_date ${orig_hms:0:2}:${orig_hms:2:2}:${orig_hms:4:2}" +%s)
+			maybe_notify "$uid" "$cand_epoch" "$trigger" "$summary" "$location"
+		done
+	done
+}
+
+for ics_url in "${calendar_urls[@]}"; do
+	process_calendar "$ics_url"
+done
