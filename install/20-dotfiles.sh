@@ -41,5 +41,12 @@ mkdir -p "$HOME/.local"
 run_logged "Stowing local executables" \
   stow --no-folding -t "$HOME/.local" local
 
+# `git config --global` writes to ~/.gitconfig when it exists, and only falls
+# back to ~/.config/git/config when it does not
+if [[ ! -e "$HOME/.gitconfig" ]]; then
+  cp install/gitconfig.dist "$HOME/.gitconfig"
+  success "Created ~/.gitconfig for machine-local settings"
+fi
+
 verify_user_ownership "$HOME/.config" "$HOME/.local" "$HOME/.bashrc" "$HOME/.profile"
 success "Dotfiles symlinked"

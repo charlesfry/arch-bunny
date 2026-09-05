@@ -1,7 +1,15 @@
 ; Deviations from git's own defaults only. `CHOICES.md`, `git-config`.
-; Identity (user.name/user.email) and credential helpers are deliberately NOT
-; here -- personal, and `install.sh` never writes them. Set your own with
-; `git config --global user.name "..."`.
+;
+; Identity (user.name/user.email) is deliberately NOT here: this file is
+; tracked, so anything in it ships to everyone who installs.
+;
+; It lives in ~/.gitconfig instead, which `install/20-dotfiles.sh` creates so
+; that it always exists. That one file being present is what keeps identity out
+; of this one: `git config --global` picks ~/.gitconfig whenever it exists and
+; only falls back to ~/.config/git/config (this file, via a symlink) when it
+; does not. Git reads both regardless, with ~/.gitconfig winning ties, so
+; ordinary `git config --global user.email ...` lands untracked and overrides
+; anything set here. Nothing needs to include anything.
 [init]
 	defaultBranch = main
 [pull]
@@ -34,6 +42,3 @@
 [credential "https://gist.github.com"]
 	helper = 
 	helper = !/usr/bin/gh auth git-credential
-[user]
-	email = charlesmfry@gmail.com
-	name = Charles Fry

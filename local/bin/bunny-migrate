@@ -8,7 +8,7 @@ USER_HOME="${HOME}"
 cd "$REPO_ROOT"
 
 printf 'Restowing dotfiles from %s...\n' "$REPO_ROOT"
-stow --restow home
+stow --restow -t "$USER_HOME" home
 stow --restow --no-folding -t "$USER_HOME/.config" config
 stow --restow --no-folding -t "$USER_HOME/.local" local
 
