@@ -1,6 +1,6 @@
-# :rabbit: arch-bunny
+# :rabbit: arch-bunny :rabbit:
 
-## Huge thanks to viacoffee, whose [dotfiles repo](https://github.com/viacoffee/dotfiles) is borrowed extensively for the install plumbing.
+### Huge thanks to viacoffee, whose [dotfiles repo](https://github.com/viacoffee/dotfiles) is borrowed extensively for the install plumbing.
 
 ## Installation
 
@@ -9,7 +9,11 @@ This is an Arch Linux setup. Start with [archinstall](https://wiki.archlinux.org
 ### Initial setup (archinstall)
 
 1. **Mirror select** — choose `us`
-2. **Disk** → Partitioning → `best_effort (or whatever your partition scheme should be)`
+2. **Disk** → Partitioning → `best_effort` — this lays down the four subvolumes the rest of
+   the setup expects: `@` → `/`, `@home` → `/home`, `@log` → `/var/log`, and `@pkg` →
+   `/var/cache/pacman/pkg`. Customize the partitioning instead and you have to create those
+   four yourself; `@snapshots`, `@dockervol`, and `@containerd` are made later by the
+   installer. See [Filesystem layout](#filesystem-layout).
 3. **Encryption** → LUKS → set a password → select your drive/partition
 4. **Bootloader** → `limine`
 5. **UKI** → confirm (ok)
@@ -18,7 +22,7 @@ This is an Arch Linux setup. Start with [archinstall](https://wiki.archlinux.org
    system to systemd-networkd (ethernet) plus iwd (Wi-Fi); the archinstall choice only
    has to survive the first boot.
 7. **Additional packages** → add `pipewire` and `git`
-8. **Timezone** → select your region
+8. **Timezone** → select your preferred region
 
 After archinstall finishes and the system reboots, log in and continue below.
 
@@ -47,8 +51,14 @@ reset below survivable: the snapshots are not stored inside the subvolume being 
 `60-docker.sh` refuses to run if `/var/lib/docker` or `/var/lib/containerd` already holds
 data outside its subvolume, rather than mounting over it and hiding those bytes.
 
-`/home` has its own Snapper config with its snapshots nested inside `@home`, so it is
-snapshotted independently and untouched by a root rollback.
+Two Snapper configs run independently: `root` covers `/` — packages, `/etc`, everything in
+`@` — and `home` covers `/home`, its snapshots nested inside `@home`. Rolling back `root`
+rewinds the system and leaves your files alone; restoring from `home` recovers files
+without reverting the system.
+
+Neither takes snapshots on a timer — `13-bootloader.sh` sets `TIMELINE_CREATE="no"` and
+keeps the last 5 per config. They happen when you run `bunny-snapshot create`, which
+snapshots both, plus the one-off factory snapshot below.
 
 Pick the plain `linux` kernel in archinstall. `install/packages` ships no kernel, so that
 choice is permanent, and `linux-hardened` adds a variable that is not worth debugging
@@ -84,8 +94,7 @@ sudo snapper -c root rollback <number>
 sudo systemctl reboot
 ```
 
-This rolls back `/` only. `/home` has its own Snapper config and is left alone, so a reset
-keeps your files.
+This rolls back `/` only — `home` is a separate config, so a reset keeps your files.
 
 ## Keyboard Shortcuts
 
@@ -222,7 +231,7 @@ Some actions have no keybinding and live in the bar instead: click the idle
 indicator for `bunny-toggle-idle`, the notification indicator for
 `bunny-toggle-dnd`, the recording indicator for `bunny-cmd-screenrecord`
 (gpu-screen-recorder, toggles), the network module for `bunny-launch-wifi`, and
-the power button for `bunny-menu power`.
+the battery module for `bunny-menu power`.
 
 The bar also carries read-only indicators for webcam and screen-share activity, a
 workspace-position dot strip (`niri-window-position`), and a weather module — see

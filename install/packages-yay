@@ -3,4 +3,4 @@
 #
 # Blank lines and `#` comments are ignored.
 brave-bin
-miniconda3
+miniforge
