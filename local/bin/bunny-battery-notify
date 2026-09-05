@@ -28,18 +28,22 @@ echo "$level" > "$STATE_FILE"
 active_session=$(loginctl show-seat seat0 -p ActiveSession --value 2>/dev/null)
 target_uid=$(loginctl show-session "$active_session" -p User --value 2>/dev/null)
 [[ -n "$target_uid" ]] || exit 0
+target_home=$(getent passwd "$target_uid" | cut -d: -f6)
 
 as_user() {
   sudo -u "#$target_uid" DBUS_SESSION_BUS_ADDRESS="unix:path=/run/user/$target_uid/bus" "$@"
 }
 
+# sudo's secure_path skips ~/.local/bin, so bunny-notify needs its full path
+notify="$target_home/.local/bin/bunny-notify"
+
 case "$level" in
   critical)
-    as_user notify-send -u critical -a battery "BATTERY CRITICAL" "${capacity}% REMAINING"
+    as_user "$notify" -u critical -a battery "BATTERY CRITICAL" "${capacity}% REMAINING"
     as_user brightnessctl -s set 10% >/dev/null
     ;;
   low)
-    as_user notify-send -u normal -a battery "Battery low" "${capacity}% remaining"
+    as_user "$notify" -u normal -a battery "Battery low" "${capacity}% remaining"
     ;;
   none)
     [[ "$last" == "critical" ]] && as_user brightnessctl -r >/dev/null

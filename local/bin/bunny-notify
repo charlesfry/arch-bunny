@@ -1,0 +1,24 @@
+#!/bin/bash
+# notify-send wrapper that defaults to bunny (Nidoran) icons by urgency.
+set -euo pipefail
+
+urgency=normal
+has_icon=0
+args=()
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    -u|--urgency) urgency="$2"; args+=("$1" "$2"); shift 2 ;;
+    --urgency=*) urgency="${1#*=}"; args+=("$1"); shift ;;
+    -i|--icon) has_icon=1; args+=("$1" "$2"); shift 2 ;;
+    --icon=*) has_icon=1; args+=("$1"); shift ;;
+    *) args+=("$1"); shift ;;
+  esac
+done
+
+if (( ! has_icon )); then
+  icon=~/.config/mako/icon.png
+  [[ "$urgency" == critical ]] && icon=~/.config/mako/icon-critical.png
+  args=(-i "$icon" "${args[@]}")
+fi
+
+exec notify-send "${args[@]}"

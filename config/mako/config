@@ -5,11 +5,11 @@ default-timeout=2000
 anchor=top-right
 width=300
 
-# Styling
-font=Noto Sans Mono, Symbols Nerd Font Mono, monospace 10
-background-color=#3b4045ff
-text-color=#f5f5f0ff
-border-color=#d4af37ff
+# Styling — palette lifted from the Nidoran icons
+font=SpaceMono Nerd Font Mono, Symbols Nerd Font Mono, monospace 10
+background-color=#161320ff
+text-color=#f5f2ffff
+border-color=#9b9bf5ff
 border-size=2
 border-radius=0
 padding=15
@@ -32,5 +32,6 @@ invisible=1
 
 [urgency=critical]
 default-timeout=0
-text-color=#d77c73
+text-color=#e69cd5ff
+border-color=#bd62c5ff
 #layer=overlay
