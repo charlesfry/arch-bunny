@@ -19,7 +19,7 @@ if ! systemctl is-enabled --quiet systemd-networkd.service; then
     sudo systemctl enable systemd-networkd.service
 fi
 
-if ! systemctl is-enabled --quiet iwd && ! systemctl is-enabled --quiet NetworkManager; then
+if ! systemctl is-enabled --quiet iwd; then
   run_logged "Enable iwd service" \
     sudo systemctl enable iwd.service
 fi

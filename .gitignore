@@ -2,7 +2,6 @@
 *.local
 
 .claude
-.personal.bashrc
 /tmp/*
 .envrc
 

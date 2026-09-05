@@ -28,7 +28,7 @@ eval "$(direnv hook bash)"
 
 # Machine-local overrides, never tracked by git (lives in $HOME, outside this repo).
 
-[[ -f "$HOME/.personal.bashrc" ]] && source "$HOME/.personal.bashrc"
+[[ -f "$HOME/.bashrc.local" ]] && source "$HOME/.bashrc.local"
 
 
 # Resolve the repo's default branch (handles main vs master). Prefers the

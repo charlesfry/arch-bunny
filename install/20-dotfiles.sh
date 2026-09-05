@@ -41,6 +41,15 @@ mkdir -p "$HOME/.local"
 run_logged "Stowing local executables" \
   stow --no-folding -t "$HOME/.local" local
 
+# Machine-local shell settings, sourced at the end of ~/.bashrc
+if [[ -f "$HOME/.personal.bashrc" && ! -e "$HOME/.bashrc.local" ]]; then
+  mv "$HOME/.personal.bashrc" "$HOME/.bashrc.local"
+  success "Renamed ~/.personal.bashrc to ~/.bashrc.local"
+elif [[ ! -e "$HOME/.bashrc.local" ]]; then
+  echo "# Machine-local bash settings, never tracked by git." >"$HOME/.bashrc.local"
+  success "Created ~/.bashrc.local for machine-local shell settings"
+fi
+
 # `git config --global` writes to ~/.gitconfig when it exists, and only falls
 # back to ~/.config/git/config when it does not
 if [[ ! -e "$HOME/.gitconfig" ]]; then
