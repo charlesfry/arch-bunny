@@ -1,0 +1,6 @@
+$include /etc/inputrc
+
+# Up/Down: filter history to lines starting with what's already typed.
+# Empty line behaves like plain previous/next history.
+"\e[A": history-search-backward
+"\e[B": history-search-forward
