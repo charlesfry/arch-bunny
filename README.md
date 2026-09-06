@@ -1,10 +1,14 @@
 # :rabbit: Bunny for Arch :rabbit:
 
-### Huge thanks to viacoffee, whose [dotfiles repo](https://github.com/viacoffee/dotfiles) is borrowed extensively for the install plumbing.
+---
+
+#### Huge thanks to viacoffee, whose [dotfiles repo](https://github.com/viacoffee/dotfiles) is borrowed extensively for the install plumbing.
+
+---
 
 ## What this repo is
 
-<u>**Bunny**</u> is an opinionated Arch Linux setup optimized for a data science workflow.
+**Bunny** is an opinionated Arch Linux setup optimized for a data science workflow.
 Like its namesake, :rabbit: **Bunny** is built to be both **Fast** and **Light**, and to
 hand a vim-loving data scientist a machine they can start working on immediately.
 Every unnecessary moment between a keypress and the response is an opening for
@@ -12,16 +16,17 @@ distraction to break your flow, so Bunny brings what you need about as quickly a
 
 ## What this Arch setup is capable of out-of-the-box
 
-- A blazing-fast kitty terminal
+- A blazing-fast terminal
 - A vim-keybound compositor
-- Lazyvim with handcrafted bindings and carefully selected plugins for python
-development and jupyter notebook integration
+- LazyVim with handcrafted bindings, and a real notebook stack: Molten runs Jupyter
+  kernels inside Neovim, with plots and typeset LaTeX drawn inline in the terminal,
+  and `.ipynb` files open as markdown so the same keys work in notebooks and `.md`
 - docker and docker-compose
-- extremely tiny snapshots for reliable rollback (no tmp, logs, cache, or docker)
-- LUKS full-disk encryption, and a one-command factory reset back to the
+- extremely well-scoped snapshots for reliable rollback on minimally-sized snapshots
+- LUKS full-disk encryption, and a scripted factory reset back to the
   finished-install snapshot
-- screenshots with annotation, screen recording, and a colour picker, all on keybinds
-- battery and Google Calendar notifications with no polling daemon and no API keys
+- screenshots with annotation and a colour picker on keybinds, screen recording from the bar
+- battery and Google Calendar notifications with no resident daemon and no API keys
 - ufw, with ufw-docker closing Docker's iptables bypass
 - Nice-to-haves that cost nothing until you reach for them: the Docker daemon is
   socket-activated rather than running at boot, `conda` is a shell stub that loads
@@ -30,11 +35,11 @@ development and jupyter notebook integration
 - `bunny-dev` to install or remove the Pi coding agent, direnv wired into the shell,
   and tmux-sessionizer to fzf into any project as its own session
 - a weather service that unintrusively lets you know about bad upcoming weather
-- (if you have a Framework 13) a kernel-level fix for your integrated microphone
+- (Framework 13, AMD Ryzen AI 300 Series) a kernel-level fix for the integrated microphone
 - a post-boot idle that's less than 1GiB of RAM
 - This setup *flies* on my Framework 13 and can make a 10 year old Thinkpad feel brand new
 
-![Idle RAM usage of this setup is measured in Megabytes: 1020 MiB of 14.9 GiB](assets/pictures/idleRamScreenshot.png)
+<img src="assets/pictures/idleRamScreenshot.png" width="320" alt="Idle RAM usage of this setup is measured in Megabytes: 1020 MiB of 14.9 GiB">
 
 
 ## Core Opinions
@@ -187,6 +192,7 @@ itself; this table mirrors [`config/niri/bindings.kdl`](config/niri/bindings.kdl
 |---|---|
 | `Mod+Return` | Terminal (kitty) |
 | `Mod+Space` | Launcher (fuzzel) |
+| `Mod+Shift+Space` | Ask the hivemind (`bunny-hivemind`, one-sentence answer in a floating terminal) |
 | `Mod+Shift+N` | Neovim in a kitty window |
 | `Mod+Shift+B` | Brave |
 | `Mod+Shift+Ctrl+B` | Brave, incognito window |
@@ -399,7 +405,10 @@ setup it replaced.
 | `gur` | `gu`, then rebase onto the default branch |
 | `guri` | `gu`, then interactive rebase onto the default branch |
 
-`~/.bashrc.local` is sourced last if it exists, and is never tracked by git. The installer creates it.
+`~/.bashrc.local` is sourced if it exists, and is never tracked by git. The installer
+creates it. It is sourced before the aliases and functions below, so redefining one of
+those there will not take: put machine-local overrides that must win at the end of the
+file instead.
 
 Up and Down filter history to lines starting with what you have already typed
 (`~/.inputrc`); an empty line behaves like ordinary previous/next history.
@@ -428,6 +437,32 @@ creates `~/.gitconfig` for that reason. Git reads both files, and anything in
 
 Sessions are named `<dir>-<hash>`, so same-named directories in different trees stay
 distinct.
+
+## Notebooks
+
+[Molten](https://github.com/benlubas/molten-nvim) runs Jupyter kernels inside Neovim
+and draws their output inline through kitty's graphics protocol, so plots and typeset
+LaTeX appear under the cell that produced them. `jupytext` opens `.ipynb` files as
+markdown, so a notebook and a plain `.md` file behave identically and the same keys
+work in both.
+
+`install/45-nvim-notebook.sh` builds the provider venv at `~/.venvs/neovim`, registers
+the `bunny` kernel, and regenerates the rplugin manifest. It runs as part of `install.sh`
+and is idempotent, so rerun it directly if the kernel ever goes missing.
+
+| Key | Action |
+|---|---|
+| `<leader>mi` | Start a kernel (picker; choose **bunny**) |
+| `<S-Enter>` | Run the code fence under the cursor |
+| `]m` / `[m` | Next/previous cell |
+| `<leader>mo` | Enter the output window, to scroll it |
+| `<leader>mh` / `<leader>ms` | Hide/show output |
+
+Two things worth knowing. `matplotlib.use("Agg")` silently replaces ipykernel's
+`matplotlib_inline` backend, and figures then come back as `text/plain` with no
+`image/png`, so no plot renders; never set it in a notebook. And inline images need a
+real kitty window, so nothing draws over SSH or in another terminal. `:checkhealth bunny`
+reports which of these dependencies are present.
 
 ## Stack
 
