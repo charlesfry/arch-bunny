@@ -1,0 +1,81 @@
+# The prompt. Ported from v1's config/bash/prompt.bash, which replaced starship
+# after measuring 65.7 ms -> 12.5 ms per prompt. Re-measured here on an idle
+# machine: starship 7 ms, this 3 ms in a dirty repo and ~0 ms outside one.
+#
+# The rule that produced the win: no `$( )` anywhere on the prompt path except
+# the one `git status` the dirty marker needs. A bare subshell alone measured
+# ~1 ms, more than the rest of the prompt combined. Helpers assign to globals
+# instead of echoing, so they cost a function call and no fork.
+
+_bunny_find_repo() { # -> $_BR, the repo root; no subshell, no fork
+	local d=$PWD
+	_BR=
+	while [[ $d == /?* ]]; do
+		if [[ -e $d/.git ]]; then
+			_BR=$d
+			return
+		fi
+		d=${d%/*}
+	done
+	[[ -e /.git ]] && _BR=/
+}
+
+_bunny_read_branch() { # -> $_BB, branch name or short SHA; one file read
+	local h
+	_BB=git
+	[[ -r $_BR/.git/HEAD ]] || return
+	read -r h <"$_BR/.git/HEAD" || return
+	case $h in
+	ref:*) _BB=${h##*/} ;;
+	*) _BB=${h:0:7} ;;
+	esac
+}
+
+_bunny_env_name() { # -> $_BE, active venv/conda env; two variable reads
+	_BE=
+	if [[ -n ${VIRTUAL_ENV:-} ]]; then
+		_BE=${VIRTUAL_ENV##*/}
+	elif [[ -n ${CONDA_DEFAULT_ENV:-} && $CONDA_DEFAULT_ENV != base ]]; then
+		_BE=$CONDA_DEFAULT_ENV
+	fi
+}
+
+# Command duration, via EPOCHREALTIME so timing costs no fork. The DEBUG trap
+# stamps a start time; the prompt clears it so a bare Enter reports nothing.
+_bunny_timer_start() { _BT=${_BT:-$EPOCHREALTIME}; }
+trap '_bunny_timer_start' DEBUG
+
+_bunny_prompt() {
+	local rc=$? dirty='' tail o secs
+
+	_bunny_elapsed=
+	if [[ -n ${_BT:-} ]]; then
+		# EPOCHREALTIME is seconds.microseconds; strip the dot for integer math.
+		secs=$(((${EPOCHREALTIME/./} - ${_BT/./}) / 1000000))
+		((secs >= 5)) && _bunny_elapsed=" ${secs}s"
+		_BT=
+	fi
+
+	_bunny_env_name
+	_bunny_find_repo
+	if [[ $_BR ]]; then
+		_bunny_read_branch
+		tail=${PWD#"$_BR"}
+		# git status, not diff-index: measured faster, and catches untracked
+		# files, which diff-index cannot see.
+		o=$(git status --porcelain 2>/dev/null)
+		[[ $o ]] && dirty=' ●'
+		PS1="\[\e[1;36m\]${_BR##*/}${tail}\[\e[0m\] \[\e[3;36m\]${_BB}\[\e[0m\]\[\e[36m\]${dirty}\[\e[0m\]"
+	else
+		PS1='\[\e[1;36m\]\w\[\e[0m\]'
+	fi
+	[[ -n $_BE ]] && PS1+="\[\e[90m\] ${_BE}\[\e[0m\]"
+	[[ -n $_bunny_elapsed ]] && PS1+="\[\e[33m\]${_bunny_elapsed}\[\e[0m\]"
+	if ((rc)); then
+		PS1+=$' \[\e[1;31m\]✗\[\e[0m\] '
+	else
+		PS1+=$' \[\e[1;36m\]❯\[\e[0m\] '
+	fi
+}
+
+PROMPT_COMMAND=_bunny_prompt

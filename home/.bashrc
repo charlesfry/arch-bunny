@@ -25,6 +25,7 @@ clear() {
 }
 
 eval "$(direnv hook bash)"
+source "$HOME/.bash_prompt"
 
 # Machine-local overrides, never tracked by git (lives in $HOME, outside this repo).
 
