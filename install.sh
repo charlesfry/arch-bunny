@@ -159,6 +159,7 @@ verify_user_ownership \
   "$HOME/notes" \
   "$HOME/projects" \
   "$HOME/work"
+run_phase "45-nvim-notebook.sh" "Neovim notebook stack"
 run_phase "50-firewall.sh" "Firewall"
 run_phase "60-docker.sh" "Docker"
 run_phase "70-factory-snapshot.sh" "Factory snapshot"

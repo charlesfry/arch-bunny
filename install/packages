@@ -28,6 +28,7 @@ grim
 gvfs-mtp
 gvfs-nfs
 hyprlock
+imagemagick
 impala
 imv
 inotify-tools
@@ -73,6 +74,9 @@ swaybg
 swayidle
 swayosd
 tailscale
+texlive-basic
+texlive-binextra
+texlive-latex
 tmux
 ttf-dejavu
 ttf-liberation

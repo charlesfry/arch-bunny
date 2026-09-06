@@ -1,6 +1,5 @@
--- :checkhealth bunny — the on-demand diagnosis CHOICES `jupyter-in-neovim`
--- requires: "a diagnosis nobody can run is not a diagnosis". Each check is a
--- failure mode actually hit on hardware in phases 3-4.
+-- :checkhealth bunny — on-demand diagnosis of the notebook stack. Each check is
+-- a failure mode that has actually been hit on this hardware.
 local M = {}
 
 function M.check()
@@ -18,7 +17,29 @@ function M.check()
     h.ok("python provider pinned: " .. py)
   else
     h.error("provider venv missing (~/.venvs/neovim) — molten/Jupyter cannot work", {
-      "run the installer's venv bootstrap, or: uv venv ~/.venvs/neovim && uv pip install pynvim jupyter_client ipykernel matplotlib",
+      "run install/45-nvim-notebook.sh from the arch-bunny checkout",
+    })
+  end
+
+  -- image.nvim's magick_cli processor shells out to ImageMagick; without it
+  -- every image chunk silently fails to draw.
+  if vim.fn.executable("magick") == 1 then
+    h.ok("ImageMagick present (image.nvim magick_cli processor)")
+  else
+    h.error("magick not on PATH — inline plots cannot be processed", { "sudo pacman -S imagemagick" })
+  end
+
+  -- text/latex output chunks go through our pnglatex module, which shells out
+  -- to latex + dvipng. Missing TeX degrades LaTeX cells to raw source, nothing
+  -- else, so this is a warning.
+  local tex = vim.tbl_filter(function(b)
+    return vim.fn.executable(b) == 0
+  end, { "latex", "dvipng" })
+  if #tex == 0 then
+    h.ok("TeX toolchain present (LaTeX output renders as images)")
+  else
+    h.warn("missing " .. table.concat(tex, ", ") .. " — LaTeX cells fall back to raw text", {
+      "sudo pacman -S texlive-basic texlive-latex texlive-binextra",
     })
   end
 

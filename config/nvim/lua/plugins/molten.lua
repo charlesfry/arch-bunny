@@ -1,9 +1,22 @@
--- Bunny notebook stack (CHOICES `jupyter-in-neovim` + `editor`; mechanisms
--- proven in benchmarks/4.15 on Arch and re-proven on the NixOS port).
+-- Bunny notebook stack.
 -- molten (Jupyter kernels) + image.nvim (kitty graphics) render plots,
 -- images, and typeset equations inline; render-markdown (from LazyVim's
--- markdown extra) decorates the buffer.
+-- markdown extra) decorates the buffer; jupytext opens .ipynb as markdown so
+-- the same fence-based keymaps work in notebooks and plain .md alike.
+--
+-- Host side (provider venv, kernel, runtime dir, pnglatex): install/45-nvim-notebook.sh.
 return {
+  {
+    -- .ipynb <-> markdown on read/write. Fences become the cells molten
+    -- evaluates, so <S-Enter> below works identically in .md and .ipynb.
+    "GCBallesteros/jupytext.nvim",
+    lazy = false,
+    opts = {
+      style = "markdown",
+      output_extension = "md",
+      force_ft = "markdown",
+    },
+  },
   {
     "3rd/image.nvim",
     lazy = false,
@@ -20,7 +33,6 @@ return {
     "benlubas/molten-nvim",
     -- rplugin commands come from the manifest at startup; lazy-loading
     -- deletes the stubs -> "Not an editor command: MoltenInit"
-    -- (CHOICES `jupyter-in-neovim`, gotcha 2)
     lazy = false,
     version = "^1",
     dependencies = { "3rd/image.nvim" },
@@ -39,12 +51,10 @@ return {
       -- bug and made it worse (image popped out with no reserved space at all): it
       -- shrinks molten's own virt_lines reservation by one, but image.nvim reserves
       -- the image's space independently, uncoordinated with molten's number.
-      -- Reverted; see CHOICES.md `editor` for the traced root cause.
+      -- Reverted.
 
-      -- Fail loudly, not silently: the predecessor's silent image gate is why
-      -- gripe #3 went undiagnosed for years. Expected absence (TTY/SSH) gets one
-      -- quiet INFO line with the reason; :checkhealth bunny carries the on-demand
-      -- diagnosis.
+      -- Fail loudly, not silently. Expected absence (TTY/SSH) gets one quiet
+      -- INFO line with the reason; :checkhealth bunny carries the full diagnosis.
       local kitty = vim.env.TERM == "xterm-kitty" or vim.env.KITTY_WINDOW_ID ~= nil
       if not kitty then
         local reason = vim.env.SSH_TTY and "SSH session" or ("TERM=" .. (vim.env.TERM or "unset"))
