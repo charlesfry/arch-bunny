@@ -1,0 +1,20 @@
+#!/bin/bash
+# Usage: bunny-toggle-prompt
+#
+# Switches the bash prompt between ~/.bash_prompt (fork-free, ~3 ms) and
+# starship (~7 ms, config at ~/.config/starship.toml). The choice is a marker
+# file that ~/.bashrc reads at startup, so it survives restow and reboots.
+set -euo pipefail
+
+marker="${XDG_CONFIG_HOME:-$HOME/.config}/bunny/prompt-starship"
+mkdir -p -- "${marker%/*}"
+
+if [[ -e $marker ]]; then
+  rm -- "$marker"
+  echo "prompt: bash"
+else
+  command -v starship >/dev/null || { echo "starship is not installed" >&2; exit 1; }
+  : >"$marker"
+  echo "prompt: starship"
+fi
+echo "run 'exec bash' to apply it here; new shells pick it up on their own"

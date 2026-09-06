@@ -1,24 +1,20 @@
 #!/bin/bash
 set -euo pipefail
 
-# Restow the dotfiles and remove symlinks left by older dotfile versions.
+# Remove symlinks left by older dotfile versions, then restow. Stale means a
+# symlink into this repo that stow will not adopt: a dangling one (the dotfile
+# was renamed or dropped) or an absolute one sitting exactly where stow would
+# put that file (hand-made with `ln -s`; stow refuses to overwrite and aborts).
+# Absolute links elsewhere are left alone - `systemctl --user enable` writes
+# those into .wants/ directories and they are not stow's business.
 REPO_ROOT="$(cd "$(dirname "$(readlink -f "$0")")/../.." && pwd)"
 USER_HOME="${HOME}"
 
 cd "$REPO_ROOT"
 
-printf 'Restowing dotfiles from %s...\n' "$REPO_ROOT"
-stow --restow -t "$USER_HOME" home
-stow --restow --no-folding -t "$USER_HOME/.config" config
-stow --restow --no-folding -t "$USER_HOME/.local" local
-
 removed=0
-declare -a roots=(
-  "$USER_HOME"
-  "$USER_HOME/.config"
-  "$USER_HOME/.local"
-)
-for root in "${roots[@]}"; do
+for spec in "$USER_HOME:home" "$USER_HOME/.config:config" "$USER_HOME/.local:local"; do
+  root="${spec%:*}" pkg="${spec##*:}"
   [[ -d "$root" ]] || continue
   maxdepth=()
   [[ "$root" == "$USER_HOME" ]] && maxdepth=(-maxdepth 1)
@@ -29,13 +25,19 @@ for root in "${roots[@]}"; do
     else
       target_abs="$(realpath -m "$(dirname "$link")/$target")"
     fi
+    [[ "$target_abs" == "$REPO_ROOT/"* ]] || continue
 
-    if [[ "$target_abs" == "$REPO_ROOT/"* ]] && [[ ! -e "$target_abs" ]]; then
+    if [[ ! -e "$target_abs" ]] || [[ "$target" = /* && "$target_abs" == "$REPO_ROOT/$pkg/${link#"$root"/}" ]]; then
       rm "$link"
-      printf 'Removed orphaned symlink: %s\n' "$link"
+      printf 'Removed stale symlink: %s\n' "$link"
       ((removed += 1))
     fi
   done < <(find "$root" "${maxdepth[@]}" -type l -print0)
 done
 
-printf 'Migration complete: dotfiles restowed, %d orphaned symlink(s) removed.\n' "$removed"
+printf 'Restowing dotfiles from %s...\n' "$REPO_ROOT"
+stow --restow -t "$USER_HOME" home
+stow --restow --no-folding -t "$USER_HOME/.config" config
+stow --restow --no-folding -t "$USER_HOME/.local" local
+
+printf 'Migration complete: %d stale symlink(s) removed, dotfiles restowed.\n' "$removed"

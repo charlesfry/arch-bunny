@@ -49,10 +49,11 @@ distraction to break your flow, so Bunny brings what you need about as quickly a
 
 Any "user-friendly" feature that gets in the way of those two is discarded.
 
-An animation earns its place only if it does at least one of two things:
+An animation earns its place only if it does at least one of the following:
 
 - Orients your movement in compositor space, and is no longer than the eye can reliably register
 - Draws your attention to a newly-important portion of the screen
+- Registers an interaction when clarity is needed
 
 All else is cruft. No bloated "user-friendly" daemons, no RAM-hogging IDEs, and no
 transition longer than a tiny fraction of a second.
@@ -68,8 +69,8 @@ and immediately usable for the work I actually do. The minimal builds expected a
 Bunny is what I always found myself rebuilding by hand.
 The install is scripted end to end, so the next machine costs an hour instead of a weekend. LUKS and snapshots are there from the first boot, which makes backing up your configuration easy and un-breaking things cheap. And the Python and Jupyter Notebook integration is set up on the assumption that it is the reason the machine exists, not an afterthought bolted on once the desktop was pretty.
 
-Also, I love bunnies. Fast, light, quiet, and they get where they are going
-without making a fuss. :rabbit: is the whole design brief in a bundle of love.
+Also, I love bunnies. Fast, light, and quiet.
+:rabbit: is the archetype of software written for those who want elegant, pure productivity.
 
 ## Installation
 
