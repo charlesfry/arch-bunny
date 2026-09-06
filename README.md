@@ -4,30 +4,36 @@
 
 ## What this repo is
 
-Bunny is an opinionated Arch Linux setup optimized for a data science workflow.
-Like its namesake, :rabbit: arch-bunny is designed to be both **Fast** and **Light**,
-while providing a setup that a vim-loving data scientist can immediately begin
-working with. Every unnecessary moment between your keypress and the computer's
-response can reliably introduce distractions and break your flow. Bunny brings you what
-you need about as quickly as the bare metal can make possible.
+<u>**Bunny**</u> is an opinionated Arch Linux setup optimized for a data science workflow.
+Like its namesake, :rabbit: **Bunny** is built to be both **Fast** and **Light**, and to
+hand a vim-loving data scientist a machine they can start working on immediately.
+Every unnecessary moment between a keypress and the response is an opening for
+distraction to break your flow, so Bunny brings what you need about as quickly as the bare metal allows.
 
 ## What this Arch setup is capable of out-of-the-box
 
-- A blazing-fast terminal
+- A blazing-fast kitty terminal
 - A vim-keybound compositor
 - Lazyvim with handcrafted bindings and carefully selected plugins for python
 development and jupyter notebook integration
-- python development with `conda`
 - docker and docker-compose
-- extremely tiny snapshots for reliable rollback
+- extremely tiny snapshots for reliable rollback (no tmp, logs, cache, or docker)
 - LUKS full-disk encryption, and a one-command factory reset back to the
   finished-install snapshot
-- `bunny-dev` for optional dev environments, direnv wired into the shell, and
-  tmux-sessionizer to fzf into any project as its own session
 - screenshots with annotation, screen recording, and a colour picker, all on keybinds
 - battery and Google Calendar notifications with no polling daemon and no API keys
 - ufw, with ufw-docker closing Docker's iptables bypass
-- a post-boot idle under 1GiB of RAM
+- Nice-to-haves that cost nothing until you reach for them: the Docker daemon is
+  socket-activated rather than running at boot, `conda` is a shell stub that loads
+  itself on first call, and Spotify, Signal, and Bitwarden are a keybind away without
+  a tray daemon between them
+- `bunny-dev` to install or remove the Pi coding agent, direnv wired into the shell,
+  and tmux-sessionizer to fzf into any project as its own session
+- a weather service that unintrusively lets you know about bad upcoming weather
+- (if you have a Framework 13) a kernel-level fix for your integrated microphone
+- a post-boot idle that's less than 1GiB of RAM
+- This setup *flies* on my Framework 13 and can make a 10 year old Thinkpad feel brand new
+
 ![Idle RAM usage of this setup is measured in Megabytes: 1020 MiB of 14.9 GiB](assets/pictures/idleRamScreenshot.png)
 
 
@@ -36,22 +42,29 @@ development and jupyter notebook integration
 - The best feature is "It works"
 - The second best feature is "It's fast"
 
-Any "user-friendly feature" which gets in the way of the first two is discarded.
+Any "user-friendly" feature that gets in the way of those two is discarded.
 
-All animations exist for at least one of two reasons:
+An animation earns its place only if it does at least one of two things:
 
-- To orient your movement in compositor space, and is as short as can be reliably registered mentally
-- To draw your attention towards a portion of the screen
+- Orients your movement in compositor space, and is no longer than the eye can reliably register
+- Draws your attention to a newly-important portion of the screen
 
-All else is cruft.
+All else is cruft. No bloated "user-friendly" daemons, no RAM-hogging IDEs, and no
+transition longer than a tiny fraction of a second.
 
-This setup discards all bloated "user-friendly" daemons, all RAM-hogging IDEs, and any transition longer than a tiny fraction of a second.
-
-Windows recommends a minimum of 8GiB of RAM. Macs start at 16. Bunny's post-startup idle is measured in Megabytes.
+Windows recommends a minimum of 8GiB of RAM. Macs start at 16. Bunny idles in Megabytes.
 
 
 ## Motivation
 
+I wanted an Arch setup that was fast and light enough to keep me in a flow state,
+and immediately usable for the work I actually do. The minimal builds expected a weekend of plumbing before I could open a notebook. The batteries-included ones shipped a pile of daemons I never asked for, IDEs that ate a third of my RAM, animations that turned a fast machine slow, and snapshot configurations where a handfull of docker containers could turn three snapshots into a three hundred Gigabyte hard drive monstrosity.
+
+Bunny is what I always found myself rebuilding by hand.
+The install is scripted end to end, so the next machine costs an hour instead of a weekend. LUKS and snapshots are there from the first boot, which makes backing up your configuration easy and un-breaking things cheap. And the Python and Jupyter Notebook integration is set up on the assumption that it is the reason the machine exists, not an afterthought bolted on once the desktop was pretty.
+
+Also, I love bunnies. Fast, light, quiet, and they get where they are going
+without making a fuss. :rabbit: is the whole design brief in a bundle of love.
 
 ## Installation
 
@@ -59,7 +72,9 @@ Start with [archinstall](https://wiki.archlinux.org/title/Archinstall), then run
 
 ### Initial setup (archinstall)
 
-1. **Mirror select**: choose `us`
+Boot from an arch iso and run `archinstall`
+
+1. **Mirror select**: choose your preferred
 2. **Disk** → Partitioning → manual btrfs subvolume layout. Create these five, `install/00-preflight.sh` will refuse to run until they are all mounted:
    | Subvolume | Mountpoint |
    |---|---|
@@ -143,6 +158,8 @@ To install a specific branch:
 sudo pacman -S --needed curl && bash <(curl -fsSL https://raw.githubusercontent.com/charlesfry/arch-bunny/master/bootstrap.sh) -b <branch>
 ```
 
+The install script, **install.sh**, is *Idempotent*, meaning you can rerun it at any point if you want to download the latest version of this repo and get the newest changes without overwriting your current settings.
+
 ### Factory reset
 
 The last install phase takes a Snapper snapshot of the finished system, described
@@ -152,7 +169,7 @@ and limine-snapper-sync lists it in the boot menu.
 To return the system to that state, find its number and roll back:
 
 ```bash
-sudo snapper -c root list | grep 'factory state'
+sudo snapper -c root list | grep 'arch-bunny factory state'
 sudo snapper -c root rollback <number>
 sudo systemctl reboot
 ```
