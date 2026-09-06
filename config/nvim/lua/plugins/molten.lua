@@ -23,6 +23,10 @@ return {
     opts = {
       backend = "kitty",
       processor = "magick_cli", -- imagemagick CLI; avoids the luarocks magick binding
+      -- Bound image height so a figure always fits molten's reserved virt lines
+      -- above; an unbounded plot overflows the reservation and the output text
+      -- ends up drawn across it.
+      max_height_window_percentage = 40,
       integrations = {
         -- renders ![]() images inline in markdown notebooks
         markdown = { enabled = true, clear_in_insert_mode = false },
@@ -47,11 +51,17 @@ return {
       -- offset copy over every plot (author-reported, 2026-08-24).
       vim.g.molten_image_location = "virt"
 
-      -- molten_virt_lines_off_by_1 was tried here 2026-08-27 for the rerun-clipping
-      -- bug and made it worse (image popped out with no reserved space at all): it
-      -- shrinks molten's own virt_lines reservation by one, but image.nvim reserves
-      -- the image's space independently, uncoordinated with molten's number.
-      -- Reverted.
+      -- Reserve enough virtual lines for a whole figure. The default is 12, but a
+      -- plot bounded to 40% of the window is ~20 rows, so molten drew its
+      -- "Out[n]: Done" status at line 12 while image.nvim drew the full image from
+      -- the top, landing the text across the middle of the plot. Keep this at or
+      -- above the row count implied by max_height_window_percentage below.
+      --
+      -- molten_virt_lines_off_by_1 was tried for this 2026-08-27 and made it worse
+      -- (image popped out with no reserved space at all). It shifts by one line;
+      -- the mismatch here is the whole height of the image, so it was never the
+      -- right knob.
+      vim.g.molten_virt_text_max_lines = 30
 
       -- Fail loudly, not silently. Expected absence (TTY/SSH) gets one quiet
       -- INFO line with the reason; :checkhealth bunny carries the full diagnosis.
