@@ -1,6 +1,7 @@
 #!/bin/bash
 set -euo pipefail
 
+DOCKER_PACKAGES=(docker docker-buildx docker-compose ufw-docker)
 PI_PACKAGES=(nodejs npm glow)
 PI_NPM_PACKAGE=@earendil-works/pi-coding-agent
 
@@ -76,10 +77,9 @@ install_pi() {
 }
 
 remove_pi() {
-  local answer package
-  local -a installed_packages=()
+  local answer
 
-  read -r -p 'Remove Pi, Glow, Node.js, and npm? [y/N] ' answer
+  read -r -p 'Remove Pi and Glow? [y/N] ' answer
   [[ $answer =~ ^[Yy]([Ee][Ss])?$ ]] || {
     printf 'Pi removal cancelled.\n'
     return 0
@@ -90,14 +90,12 @@ remove_pi() {
     npm uninstall --global --prefix "$HOME/.local" "$PI_NPM_PACKAGE"
   fi
 
-  for package in "${PI_PACKAGES[@]}"; do
-    package_installed "$package" && installed_packages+=("$package")
-  done
-  if ((${#installed_packages[@]})); then
-    sudo pacman -Rns --noconfirm "${installed_packages[@]}"
+  # nodejs and npm are left alone: anything else installed through npm would go with them
+  if package_installed glow; then
+    sudo pacman -Rns --noconfirm glow
   fi
 
-  printf '\nPi and its system packages were removed. ~/.pi was preserved.\n'
+  printf '\nPi and Glow were removed. Node.js and npm were left in place, and ~/.pi was preserved.\n'
 }
 
 case ${1:-} in
