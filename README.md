@@ -338,7 +338,15 @@ Integrate calendar), then:
 systemctl --user enable --now bunny-calendar-notify.timer
 ```
 
-Recurring events are handled for `FREQ=DAILY` and `FREQ=WEEKLY;BYDAY=…` only.
+Recurring events are expanded for `FREQ=DAILY`, `FREQ=WEEKLY;BYDAY=…`,
+`FREQ=MONTHLY` with either `BYMONTHDAY=…` or `BYDAY=…` (including positional forms
+like `2TU` and `-1FR`), and `FREQ=YEARLY` on DTSTART's month and day. `INTERVAL`,
+`UNTIL`, `WKST`, `EXDATE`, and `RECURRENCE-ID` overrides are honored, and a
+`MONTHLY` rule carrying both `BYDAY` and `BYMONTHDAY` requires both to match, so
+`BYDAY=FR;BYMONTHDAY=13` is Friday the 13th rather than every Friday. `COUNT` is
+ignored and treated as unbounded. Rules using `BYSETPOS` are skipped rather than
+notified on, since expanding the set without applying the selection would fire on
+every member of it, and `BYWEEKNO` and `BYYEARDAY` are not expanded.
 
 **Dismissal** is `Mod+Comma` (top notification) and `Mod+Shift+Comma` (all), with
 `bunny-toggle-dnd` on the bar's notification indicator.

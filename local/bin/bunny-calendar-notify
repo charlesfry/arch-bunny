@@ -5,10 +5,12 @@
 # ~/.config/bunny/calendar-ics-url (Calendar Settings > pick calendar >
 # Integrate calendar).
 
-# ponytail: RRULE support covers FREQ=DAILY, FREQ=WEEKLY;BYDAY=... and
-# FREQ=MONTHLY;BYMONTHDAY=... (INTERVAL/UNTIL/WKST honored, COUNT ignored and
-# treated as unbounded). No YEARLY — those are all-day holidays here, which the
-# all-day filter drops anyway.
+# ponytail: RRULE support covers FREQ=DAILY, FREQ=WEEKLY;BYDAY=..., FREQ=MONTHLY
+# with either BYMONTHDAY=... or BYDAY=... including positional ("2TU", "-1FR"),
+# and FREQ=YEARLY on DTSTART's month and day. INTERVAL/UNTIL/WKST/EXDATE honored;
+# COUNT is ignored and treated as unbounded. BYSETPOS/BYWEEKNO/BYYEARDAY are not
+# expanded. Add those if a real calendar ever needs them.
+
 set -Eeuo pipefail
 trap 'e=$?; echo "$0: line $LINENO exited $e" >&2' ERR
 
@@ -275,7 +277,8 @@ process_calendar() {
 	local byday wkst wkst_wdi wdi dim lead max_lead max_off exline exv
 	local today_mid offset_days cand_day_epoch cand_date cand_dom cand_ym
 	local days_diff weekday weeks_diff matches md target cand_epoch
-	local -a exlines exvals bymonthdays
+	local byday_days part nth has_bymonthday byday_ok bmd_ok
+	local -a exlines exvals bymonthdays byday_parts
 	local -A ex_epochs
 
 	for rec in "${base_events[@]}"; do
@@ -283,7 +286,7 @@ process_calendar() {
 
 		freq=""
 		[[ "$rrule" =~ FREQ=([A-Z]+) ]] && freq="${BASH_REMATCH[1]}"
-		[[ "$freq" == "DAILY" || "$freq" == "WEEKLY" || "$freq" == "MONTHLY" ]] || continue
+		[[ "$freq" == "DAILY" || "$freq" == "WEEKLY" || "$freq" == "MONTHLY" || "$freq" == "YEARLY" ]] || continue
 
 		orig_hms="${value:9:6}"
 		orig_day_epoch=$(ics_date_to_epoch "${value:0:8}" "$tz") || continue
@@ -291,6 +294,7 @@ process_calendar() {
 
 		interval=1
 		[[ "$rrule" =~ INTERVAL=([0-9]+) ]] && interval="${BASH_REMATCH[1]}"
+		((interval > 0)) || interval=1 # malformed INTERVAL=0 would divide by zero below
 		until_epoch=""
 		if [[ "$rrule" =~ UNTIL=([0-9TZ]+) ]]; then
 			u="${BASH_REMATCH[1]}"
@@ -303,11 +307,23 @@ process_calendar() {
 				until_epoch=$((until_epoch + 86399))
 			fi
 		fi
-		byday=""
-		[[ "$rrule" =~ BYDAY=([A-Z,]+) ]] && byday="${BASH_REMATCH[1]}"
-		# Positional BYDAY ("2SU" = second Sunday) isn't expanded here, and the
-		# capture above drops the number, so skip rather than fire on every Sunday.
-		[[ "$freq" == "MONTHLY" && "$rrule" == *BYDAY=* ]] && continue
+		byday="" byday_days=""
+		if [[ "$rrule" =~ BYDAY=([-+0-9A-Z,]+) ]]; then
+			byday="${BASH_REMATCH[1]}"
+			# The weekday filter below matches bare two-letter codes, so keep a
+			# stripped copy: "2TU,-1FR" restricts to TU and FR like any other rule,
+			# and the positions are applied per-candidate in the MONTHLY branch.
+			IFS=',' read -ra byday_parts <<<"$byday"
+			for part in "${byday_parts[@]}"; do
+				byday_days+="${byday_days:+,}${part: -2}"
+			done
+		fi
+		# BYSETPOS picks the Nth member of each period's expanded set (RFC 5545
+		# 3.3.10). Expanding the set without applying the selection fires on every
+		# member, so skip these rather than notify daily.
+		[[ "$rrule" == *BYSETPOS=* ]] && continue
+		has_bymonthday=0
+		[[ "$rrule" == *BYMONTHDAY=* ]] && has_bymonthday=1
 		wkst=MO
 		[[ "$rrule" =~ WKST=([A-Z][A-Z]) ]] && wkst="${BASH_REMATCH[1]}"
 
@@ -320,7 +336,7 @@ process_calendar() {
 			weekday=${weekday^^}
 			weekday=${weekday:0:2}
 			# RFC default when BYDAY is absent: DTSTART's own weekday.
-			[[ -n "$byday" ]] || byday="$weekday"
+			[[ -n "$byday_days" ]] || byday_days="$weekday"
 			weekday_index "$weekday"
 			orig_wdi=$wdi
 			weekday_index "$wkst"
@@ -365,7 +381,7 @@ process_calendar() {
 			# BYDAY restricts DAILY too ("every weekday" is FREQ=DAILY;BYDAY=MO..FR).
 			weekday=${weekday^^}
 			weekday=${weekday:0:2}
-			[[ -n "$byday" && ",$byday," != *",$weekday,"* ]] && continue
+			[[ "$freq" != "YEARLY" && -n "$byday_days" && ",$byday_days," != *",$weekday,"* ]] && continue
 
 			matches=0
 			if [[ "$freq" == "DAILY" ]]; then
@@ -376,15 +392,47 @@ process_calendar() {
 				weekday_index "$weekday"
 				weeks_diff=$(((days_diff - (wdi - wkst_wdi + 7) % 7 + orig_wdi) / 7))
 				((weeks_diff % interval == 0)) && matches=1
+			elif [[ "$freq" == "YEARLY" ]]; then
+				# Same month and day as DTSTART, INTERVAL counted in years. BYMONTH
+				# and BYDAY refinements are not expanded; those are all-day holiday
+				# feeds, which the all-day filter drops before this runs. A Feb 29
+				# DTSTART matching only in leap years is the RFC behavior.
+				if [[ "${cand_date:4:4}" == "${value:4:4}" ]] &&
+					(((10#${cand_date:0:4} - 10#${value:0:4}) % interval == 0)); then
+					matches=1
+				fi
 			else
 				cand_ym=$((10#${cand_date:0:4} * 12 + 10#${cand_date:4:2}))
 				(((cand_ym - orig_ym) % interval == 0)) || continue
 				cand_dom=$((10#${cand_date:6:2}))
 				days_in_month "$((10#${cand_date:0:4}))" "$((10#${cand_date:4:2}))"
-				for md in "${bymonthdays[@]}"; do
-					if [[ "$md" == -* ]]; then target=$((dim - 10#${md#-} + 1)); else target=$((10#$md)); fi
-					((target == cand_dom)) && matches=1
-				done
+				# When both are present RFC 5545 makes each a limit, so require both:
+				# BYDAY=FR;BYMONTHDAY=13 is Friday the 13th, not every Friday.
+				byday_ok=1 bmd_ok=1
+				if [[ -n "$byday" ]]; then
+					byday_ok=0
+					# The weekday filter above already passed, so only the ordinal is
+					# left: "2TU" is the 2nd Tuesday, "-1FR" the last Friday, bare "TU"
+					# every Tuesday.
+					for part in "${byday_parts[@]}"; do
+						[[ "$weekday" == "${part: -2}" ]] || continue
+						nth="${part%??}"
+						[[ -z "$nth" ]] && byday_ok=1 && continue
+						if [[ "$nth" == -* ]]; then
+							(((dim - cand_dom) / 7 + 1 == 10#${nth#-})) && byday_ok=1
+						else
+							(((cand_dom - 1) / 7 + 1 == 10#${nth#+})) && byday_ok=1
+						fi
+					done
+				fi
+				if [[ -z "$byday" ]] || ((has_bymonthday)); then
+					bmd_ok=0
+					for md in "${bymonthdays[@]}"; do
+						if [[ "$md" == -* ]]; then target=$((dim - 10#${md#-} + 1)); else target=$((10#$md)); fi
+						((target == cand_dom)) && bmd_ok=1
+					done
+				fi
+				((byday_ok && bmd_ok)) && matches=1
 			fi
 			((matches)) || continue
 

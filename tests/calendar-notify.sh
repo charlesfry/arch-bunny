@@ -73,8 +73,8 @@ check "-P1W lead is 604800s, alarm already due" 1 'NOTIFY: Week Lead'
 awk -F"[|\\t]" "{print \"  start=\"strftime(\"%F %T %Z\",\$2)\"  lead=\"\$3\"s\"}" "$here/state/bunny-calendar-notify/notified"
 
 echo "== 3. MONTHLY BYMONTHDAY + INTERVAL =="
-q3=$(date -d "@$now" +%Y)-$(printf %02d $(( $(date -d "@$now" +%-m) - 3 )))-$(date -d "@$now" +%d)
-q2=$(date -d "@$now" +%Y)-$(printf %02d $(( $(date -d "@$now" +%-m) - 2 )))-$(date -d "@$now" +%d)
+q3=$(date -d "$(date -d "@$now" +%Y-%m-01) -3 months" +%Y-%m-01)
+q2=$(date -d "$(date -d "@$now" +%Y-%m-01) -2 months" +%Y-%m-01)
 hhmm=$(date -d "@$((now+300))" +%H%M%S)
 run <<EOF
 $(ev q3 "Quarterly Hit" "DTSTART;TZID=America/New_York:$(date -d "$q3" +%Y%m%d)T$hhmm" "RRULE:FREQ=MONTHLY;WKST=SU;INTERVAL=3;BYMONTHDAY=$(date -d "@$now" +%d)"; end)
@@ -193,11 +193,111 @@ if [[ "$tdy" == SA || "$tdy" == SU ]]; then want=0; else want=1; fi
 check "FREQ=DAILY;BYDAY=MO-FR on a $tdy" "$want" 'NOTIFY: Daily Weekdays'
 check "FREQ=DAILY unrestricted fires" 1 'NOTIFY: Daily All'
 
-echo "== 13. MONTHLY with positional BYDAY is skipped, not mis-fired =="
+echo "== 13. MONTHLY positional BYDAY: right ordinal only =="
+# Derive the ordinals by counting, not with the script's own (dom-1)/7+1
+# formula: sharing the expression would hide an off-by-one in both.
+dom=$(date -d "@$now" +%-d)
+ym=$(date -d "@$now" +%Y-%m)
+dim=$(date -d "$ym-01 +1 month -1 day" +%-d)
+wd_of() { local w; w=$(date -d "$ym-$1" +%a); w=${w^^}; echo "${w:0:2}"; }
+nth=0; for ((d = 1; d <= dom; d++)); do [[ $(wd_of "$d") == "$tdy" ]] && nth=$((nth + 1)); done
+from_end=0; for ((d = dom; d <= dim; d++)); do [[ $(wd_of "$d") == "$tdy" ]] && from_end=$((from_end + 1)); done
+wrong=$((nth % 5 + 1))
+start2mo="DTSTART;TZID=America/New_York:$(date -d "$ym-01 -2 months" +%Y%m%d)T$hhmm"
 run <<EOF
-$(ev mpos "Monthly Positional" "DTSTART;TZID=America/New_York:$(date -d '2 months ago' +%Y%m%d)T$hhmm" "RRULE:FREQ=MONTHLY;BYDAY=1$tdy"; end)
+$(ev mpos "Positional Hit" "$start2mo" "RRULE:FREQ=MONTHLY;BYDAY=$nth$tdy"; end)
+$(ev mplus "Positional Plus" "$start2mo" "RRULE:FREQ=MONTHLY;BYDAY=+$nth$tdy"; end)
+$(ev mneg "Positional Miss" "$start2mo" "RRULE:FREQ=MONTHLY;BYDAY=$wrong$tdy"; end)
+$(ev mlast "Positional FromEnd" "$start2mo" "RRULE:FREQ=MONTHLY;BYDAY=-$from_end$tdy"; end)
+$(ev mlastx "Positional FromEnd Miss" "$start2mo" "RRULE:FREQ=MONTHLY;BYDAY=-$((from_end + 1))$tdy"; end)
+$(ev mbare "Positional Bare" "$start2mo" "RRULE:FREQ=MONTHLY;BYDAY=$tdy"; end)
+$(ev mmulti "Positional Multi" "$start2mo" "RRULE:FREQ=MONTHLY;BYDAY=$nth$tdy,4WE,-2MO"; end)
+$(ev mmultix "Positional Multi Miss" "$start2mo" "RRULE:FREQ=MONTHLY;BYDAY=$wrong$tdy,4WE,-2MO"; end)
 EOF
-check "MONTHLY;BYDAY=1$tdy does not fire on every $tdy" 0 'NOTIFY: Monthly Positional'
+check "BYDAY=$nth$tdy fires on the ${nth}th $tdy" 1 'NOTIFY: Positional Hit'
+check "BYDAY=+$nth$tdy (explicit +) fires too" 1 'NOTIFY: Positional Plus'
+check "BYDAY=$wrong$tdy does not fire" 0 'NOTIFY: Positional Miss'
+check "BYDAY=-$from_end$tdy counts back from month end" 1 'NOTIFY: Positional FromEnd'
+check "BYDAY=-$((from_end + 1))$tdy is one too far back" 0 'NOTIFY: Positional FromEnd Miss'
+check "BYDAY=$tdy (no ordinal) fires on any $tdy" 1 'NOTIFY: Positional Bare'
+check "multi-weekday BYDAY matches on its $tdy term" 1 'NOTIFY: Positional Multi'
+check "multi-weekday BYDAY with no matching term is silent" 0 'NOTIFY: Positional Multi Miss'
+
+# Two cases today's date cannot distinguish on its own.
+# (a) (d-1)/7+1 and d/7+1 agree unless d is a multiple of 7, so reach the next
+#     such day with a long VALARM lead (+1h so the alarm is already due).
+target=$(((dom / 7 + 1) * 7))
+if ((target > dim)); then
+	target=7; lead_d=$((dim - dom + 7)); tdate=$(date -d "$ym-01 +1 month +6 days" +%Y-%m-%d)
+else
+	lead_d=$((target - dom)); tdate="$ym-$(printf %02d "$target")"
+fi
+twd=$(date -d "$tdate" +%a); twd=${twd^^}; twd=${twd:0:2}
+tnth=$(((target - 1) / 7 + 1))
+# (b) a term whose ordinal matches today but whose weekday does not, paired with
+#     a today-weekday term so it still clears the coarse weekday filter.
+otherwd=MO; [[ "$tdy" == MO ]] && otherwd=TU
+run <<EOF
+$(ev mmul7 "Ordinal Mult7" "$start2mo" "RRULE:FREQ=MONTHLY;BYDAY=$tnth$twd"; alarm "-P${lead_d}DT1H"; printf 'END:VEVENT\r\n')
+$(ev mmul7x "Ordinal Mult7 Off" "$start2mo" "RRULE:FREQ=MONTHLY;BYDAY=$((tnth + 1))$twd"; alarm "-P${lead_d}DT1H"; printf 'END:VEVENT\r\n')
+$(ev mcross "Ordinal Crosstalk" "$start2mo" "RRULE:FREQ=MONTHLY;BYDAY=$nth$otherwd,$wrong$tdy"; end)
+EOF
+check "day $target is the ${tnth}th $twd, not the $((tnth + 1))th" 1 'NOTIFY: Ordinal Mult7'
+check "day $target does not match ordinal $((tnth + 1))" 0 'NOTIFY: Ordinal Mult7 Off'
+check "an ordinal match on the wrong weekday does not fire" 0 'NOTIFY: Ordinal Crosstalk'
+
+echo "== 14. YEARLY on DTSTART's month and day =="
+# Every DTSTART is 4 years back so a Feb 29 "today" still lands on a leap year.
+md=$(date -d "@$now" +%m%d)
+y4=$(($(date -d "@$now" +%Y) - 4))
+mm=$(date -d "@$now" +%-m)
+for k in 6 5 7 4 8; do
+	om=$(((mm - 1 + k) % 12 + 1))
+	date -d "$y4-$om-$dom" >/dev/null 2>&1 && break
+done
+# Same day-of-month, different month: a YEARLY branch that compared only the day
+# would fire on this, and today is inside the candidate window so it is reachable.
+other=$(printf '%02d%02d' "$om" "$dom")
+run <<EOF
+$(ev yr "Yearly Hit" "DTSTART;TZID=America/New_York:$y4${md}T$hhmm" "RRULE:FREQ=YEARLY"; end)
+$(ev yrx "Yearly Month Miss" "DTSTART;TZID=America/New_York:$y4${other}T$hhmm" "RRULE:FREQ=YEARLY"; end)
+$(ev yri "Yearly Interval Hit" "DTSTART;TZID=America/New_York:$y4${md}T$hhmm" "RRULE:FREQ=YEARLY;INTERVAL=2"; end)
+$(ev yrix "Yearly Interval Miss" "DTSTART;TZID=America/New_York:$y4${md}T$hhmm" "RRULE:FREQ=YEARLY;INTERVAL=3"; end)
+$(ev yrbd "Yearly Byday" "DTSTART;TZID=America/New_York:$y4${md}T$hhmm" "RRULE:FREQ=YEARLY;BYDAY=1TH"; end)
+EOF
+check "FREQ=YEARLY fires on the anniversary" 1 'NOTIFY: Yearly Hit'
+check "FREQ=YEARLY checks the month, not just the day" 0 'NOTIFY: Yearly Month Miss'
+check "FREQ=YEARLY;INTERVAL=2 fires 4 years on" 1 'NOTIFY: Yearly Interval Hit'
+check "FREQ=YEARLY;INTERVAL=3 silent 4 years on" 0 'NOTIFY: Yearly Interval Miss'
+check "FREQ=YEARLY;BYDAY=... degrades to the anniversary, not silence" 1 'NOTIFY: Yearly Byday'
+
+echo "== 15. BYDAY as a limit, not an expansion =="
+# Both regressions the positional-BYDAY change introduced: BYSETPOS selects one
+# member of the expanded set, and BYDAY+BYMONTHDAY intersect.
+# Anchored to today so both directions of the intersection are exercised on any
+# date, rather than depending on when the next literal Friday the 13th falls.
+otherdom=$((dom % 28 + 1))
+run <<EOF
+$(ev sp "Setpos Weekday" "DTSTART;TZID=America/New_York:20260831T170000" "RRULE:FREQ=MONTHLY;BYDAY=MO,TU,WE,TH,FR;BYSETPOS=-1"; alarm "-P7D"; printf 'END:VEVENT\r\n')
+$(ev both "Both Match" "$start2mo" "RRULE:FREQ=MONTHLY;BYDAY=$tdy;BYMONTHDAY=$dom"; end)
+$(ev onlyday "Only Weekday Matches" "$start2mo" "RRULE:FREQ=MONTHLY;BYDAY=$tdy;BYMONTHDAY=$otherdom"; end)
+$(ev bmd "Plain Monthday" "$start2mo" "RRULE:FREQ=MONTHLY;BYMONTHDAY=$dom"; end)
+EOF
+check "BYSETPOS rule is skipped, not fired on every weekday" 0 'NOTIFY: Setpos Weekday'
+check "BYDAY+BYMONTHDAY both matching fires" 1 'NOTIFY: Both Match'
+check "BYDAY matching but BYMONTHDAY not is silent" 0 'NOTIFY: Only Weekday Matches'
+check "BYMONTHDAY alone still expands" 1 'NOTIFY: Plain Monthday'
+
+echo "== 16. malformed INTERVAL=0 must not divide by zero =="
+run <<EOF
+$(ev iv0 "Interval Zero" "DTSTART;TZID=America/New_York:$(date -d "$ym-01 -2 months" +%Y%m%d)T$hhmm" "RRULE:FREQ=DAILY;INTERVAL=0"; end)
+EOF
+check "INTERVAL=0 treated as 1, event still fires" 1 'NOTIFY: Interval Zero'
+if grep -q 'division by 0' "$here/err"; then
+	fail=$((fail + 1)); printf '  FAIL INTERVAL=0 wrote a division-by-zero diagnostic to stderr\n'
+else
+	pass=$((pass + 1)); printf '  ok   INTERVAL=0 leaves stderr clean\n'
+fi
 
 echo
 echo "passed=$pass failed=$fail"
