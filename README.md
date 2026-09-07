@@ -216,6 +216,7 @@ itself; this table mirrors [`config/niri/bindings.kdl`](config/niri/bindings.kdl
 | `Mod+Shift+S` | System menu (sound, Wi-Fi, Bluetooth, restart hardware, change password, set defaults) |
 | `Mod+Ctrl+O` | Toggle menu (idle, do not disturb, Wi-Fi, Bluetooth, SSH), each showing its state |
 | `Mod+Ctrl+P` | Install or remove a package (repositories or the AUR) |
+| `Mod+Ctrl+Space` / `Mod+Ctrl+Shift+Space` | Next/previous wallpaper from `~/Pictures/Wallpapers` |
 | `Mod+Ctrl+V` | Clipboard history (cliphist through fuzzel) |
 | `Ctrl+C` / `Ctrl+V` | Copy and paste, in the terminal as well as everywhere else |
 | `Mod+Ctrl+T` | Set a reminder (`<delay> <message>`; a bare number means minutes) |
@@ -348,7 +349,7 @@ Scripts with no keyboard shortcut or menu entry. Invoke these manually from a te
 
 | Command | Description |
 |---|---|
-| `bunny-theme-background` | Set desktop wallpaper from a file path or URL |
+| `bunny-theme-background <path\|url\|--next\|--previous>` | Set the wallpaper, or cycle through `~/Pictures/Wallpapers` (`$BUNNY_WALLPAPER_DIR` to move it). Also on `Mod+Ctrl+Space` |
 | `bunny-dev` | Install, inspect, or remove optional development environments |
 | `bunny-update` | Update system packages and optionally reboot |
 | `bunny-migrate` | Re-link arch-bunny's dotfiles and remove orphaned symlinks |

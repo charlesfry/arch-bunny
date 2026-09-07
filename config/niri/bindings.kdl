@@ -50,6 +50,10 @@ binds {
     // Install or remove a package from the launcher. Runs in a terminal so
     // pacman's own confirmation is the safety, not a menu claiming success.
     Mod+Ctrl+P hotkey-overlay-title="Packages" { spawn "bunny-menu-package"; }
+    // Cycle the wallpaper. A picker would mean choosing by filename rather than
+    // by picture, so this steps through the collection instead.
+    Mod+Ctrl+Space hotkey-overlay-title="Next wallpaper" { spawn "bunny-theme-background" "--next"; }
+    Mod+Ctrl+Shift+Space { spawn "bunny-theme-background" "--previous"; }
     Mod+Ctrl+V { spawn-sh "cliphist list | fuzzel --dmenu | cliphist decode | wl-copy"; }
     // Reminder. Prompts for "<delay> <message>"; a bare number means minutes.
     // Backed by a transient systemd timer, so nothing waits in the background.
