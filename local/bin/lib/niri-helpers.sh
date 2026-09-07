@@ -119,6 +119,19 @@ niri_windows_matching() {
     '
 }
 
+# Return windows matching a pattern in app_id only
+niri_apps_matching() {
+  local pattern="$1"
+
+  niri_windows_json |
+    jq -c --arg p "$pattern" '
+      .[]
+      | select(
+          (.app_id // "" | test($p; "i"))
+        )
+    '
+}
+
 # -------------------------------------------------------------------
 # Window actions
 # -------------------------------------------------------------------
@@ -160,7 +173,7 @@ niri_focus_or_spawn() {
   local window_id
   # -s slurps the whole stream so first() can't close the pipe early and
   # hand jq a SIGPIPE under `set -o pipefail`
-  window_id="$(niri_windows_matching "$pattern" | jq -r -s 'first(.[]).id // empty')"
+  window_id="$(niri_apps_matching "$pattern" | jq -r -s 'first(.[]).id // empty')"
 
   if [[ -n "$window_id" ]]; then
     niri msg action focus-window --id "$window_id"

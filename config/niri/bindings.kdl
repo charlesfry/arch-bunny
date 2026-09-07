@@ -20,11 +20,12 @@ binds {
     Mod+Return hotkey-overlay-title="Terminal: kitty" { spawn "kitty"; }
     Mod+Space hotkey-overlay-title="Launcher: fuzzel" { spawn "fuzzel"; }
     // Bunny: app binds. Cascade is Omarchy defaults <- the author's bindings.conf,
-    // filtered to packages with CHOICES rows. launch-or-focus semantics not ported.
+    // filtered to packages with CHOICES rows. Only the Spotify bind uses
+    // bunny-launch-or-focus; the rest still spawn a fresh instance every press.
     Mod+Shift+N hotkey-overlay-title="Editor: nvim" { spawn "kitty" "-o" "dynamic_title=no" "--title" "Neovim" "-e" "nvim"; }
     Mod+Shift+B hotkey-overlay-title="Browser: brave" { spawn "brave"; }
     Mod+Shift+Ctrl+B { spawn "brave" "--incognito"; }
-    Mod+Shift+M { spawn "spotify-launcher"; }
+    Mod+Shift+M { spawn "bunny-launch-or-focus" "^Spotify$" "spotify-launcher"; }
     Mod+Shift+T { spawn "kitty" "-e" "btop"; }
     Mod+Shift+D { spawn "kitty" "-e" "lazydocker"; }
     Mod+Shift+G { spawn "signal-desktop"; }
