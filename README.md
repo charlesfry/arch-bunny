@@ -408,6 +408,7 @@ setup it replaced.
 | Alias / function | Does |
 |---|---|
 | `vi` | `nvim` |
+| `cd` | [zoxide](https://github.com/ajeetdsouza/zoxide), so `cd proj` jumps to any directory you have visited whose path contains `proj`. `cd -` and plain paths behave as before. Hooked with `--hook pwd`, so it forks only when the directory actually changes, not on every prompt |
 | `clear` | Clears the screen *and* the scrollback buffer (`\e[3J`), which plain `clear` leaves behind |
 | `conda` | Lazy stub that sources miniforge's `conda.sh` on first call, so shell startup pays nothing |
 | `gu` | Stash, check out the repo's default branch (`main` or `master`), pull, return to your branch, pop |

@@ -25,6 +25,12 @@ clear() {
 }
 
 eval "$(direnv hook bash)"
+
+# zoxide, as `cd`: jump to a directory by any part of its path once visited.
+# --hook pwd, not the default prompt hook: the default forks `zoxide add` on
+# every prompt, which the fork-free prompt below exists to avoid. The pwd hook
+# compares $PWD in-shell and only forks when the directory actually changed.
+eval "$(zoxide init bash --cmd cd --hook pwd)"
 # Prompt, toggled by bunny-toggle-prompt. The bash prompt is the default; the
 # marker file opts this machine into starship instead.
 if [[ -e "${XDG_CONFIG_HOME:-$HOME/.config}/bunny/prompt-starship" ]]; then
