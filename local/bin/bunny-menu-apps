@@ -1,9 +1,0 @@
-#!/bin/bash
-
-exec j4-dmenu-desktop \
-  --dmenu="bunny-launch-menu" \
-  --wrapper="uwsm-app --" \
-  --term-mode=custom \
-  --term="xdg-terminal-exec --title={name} -- {cmdline@}" \
-  --no-generic \
-  --log-level=ERROR
