@@ -5,7 +5,10 @@ if [[ "$1" == power ]]; then
   BAT=${batteries[0]}
   status=$(<"$BAT/status")
   [[ $status == Discharging ]] && status=""
-  bunny-notify "Battery Level" "$(<"$BAT/capacity")% ${status:+ $status}" --expire-time 3000
+  limit=""
+  [[ -r $BAT/charge_control_end_threshold ]] && limit=$(<"$BAT/charge_control_end_threshold")
+  [[ $limit == 100 ]] && limit=""
+  bunny-notify "Battery Level" "$(<"$BAT/capacity")% ${status:+ $status}${limit:+ (limit ${limit}%)}" --expire-time 3000
   exit
 fi
 

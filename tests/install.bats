@@ -25,7 +25,6 @@ setup() {
   packages_file=$repo_root/install/packages
   pacman_script=$repo_root/install/10-packages.sh
   pacman_fragment=$repo_root/install/default/pacman/bunny-repositories.conf
-  app_launcher=$repo_root/local/bin/bunny-menu-apps
   application_overrides=$repo_root/install/default/applications
   user_setup_script=$repo_root/install/40-user-setup.sh
   swayosd_style=$repo_root/config/swayosd/style.css
@@ -294,7 +293,7 @@ EOF
   run env XDG_CONFIG_HOME="$clean_home/.config" \
     xdg-mime query default x-scheme-handler/terminal
   [ "$status" -eq 0 ]
-  [ "$output" = Alacritty.desktop ]
+  [ "$output" = kitty.desktop ]
 
   run env XDG_CONFIG_HOME="$clean_home/.config" \
     xdg-mime query default inode/directory
@@ -313,17 +312,22 @@ EOF
   [ ! -e "$repo_root/install/91-mimes.sh" ]
 }
 
-@test "application launcher uses Bemenu with a desktop-entry backend" {
-  grep -Fxq j4-dmenu-desktop "$packages_file"
-  grep -Fq 'exec j4-dmenu-desktop' "$app_launcher"
-  grep -Fq -- '--dmenu="bunny-launch-menu"' "$app_launcher"
-  grep -Fq -- '--wrapper="uwsm-app --"' "$app_launcher"
-  grep -Fq -- '--term="xdg-terminal-exec --title={name} -- {cmdline@}"' "$app_launcher"
+@test "application launcher uses fuzzel with desktop-entry overrides" {
+  grep -Fxq fuzzel "$packages_file"
+  grep -Fq 'spawn "fuzzel"' "$repo_root/config/niri/bindings.kdl"
+  grep -Fq 'fuzzel --dmenu' "$repo_root/config/niri/bindings.kdl"
+  grep -Fxq 'terminal=kitty -e' "$repo_root/config/fuzzel/fuzzel.ini"
+
+  # bemenu stays for the power and system menus only
+  grep -Fxq bemenu-wayland "$packages_file"
+  grep -Fq 'exec bemenu' "$repo_root/local/bin/bunny-launch-menu"
+  run grep -Fxq j4-dmenu-desktop "$packages_file"
+  [ "$status" -eq 1 ]
+  [ ! -e "$repo_root/local/bin/bunny-menu-apps" ]
 
   hidden_overrides=(
     avahi-discover.desktop
     bssh.desktop
-    btop.desktop
     bvnc.desktop
     limine-snapper-restore.desktop
     lstopo.desktop
@@ -338,9 +342,13 @@ EOF
     grep -Fxq 'Hidden=true' "$application_overrides/$desktop_id"
   done
 
-  grep -Fxq 'X-TerminalArgExec=-e' "$application_overrides/Alacritty.desktop"
-  grep -Fxq 'X-TerminalArgAppId=--class' "$application_overrides/Alacritty.desktop"
-  [ ! -e "$repo_root/local/share/applications/Alacritty.desktop" ]
+  # A same-id user entry replaces the system one outright, so a visible
+  # override has to carry its own Exec, and an entry that needs no change
+  # (btop, Alacritty) gets no file here at all.
+  grep -Fxq 'Hidden=false' "$application_overrides/discord.desktop"
+  grep -Fxq 'Exec=discord' "$application_overrides/discord.desktop"
+  [ ! -e "$application_overrides/btop.desktop" ]
+  [ ! -e "$application_overrides/Alacritty.desktop" ]
   [ "$(find "$application_overrides" -maxdepth 1 -type f -name '*.desktop' | wc -l)" -eq "$(( ${#hidden_overrides[@]} + 1 ))" ]
   if command -v desktop-file-validate >/dev/null 2>&1; then
     run desktop-file-validate "$application_overrides"/*.desktop

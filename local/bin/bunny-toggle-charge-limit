@@ -1,0 +1,21 @@
+#!/bin/bash
+
+# Toggle the EC charge ceiling between 80% (longevity) and 100% (full range).
+# The ceiling is EC state, not a userspace daemon, so nothing has to keep
+# running for it to hold.
+
+limits=(/sys/class/power_supply/BAT*/charge_control_end_threshold)
+limit=${limits[0]}
+
+if [[ ! -w $limit ]]; then
+  bunny-notify -u critical "Charge Limit" "not available"
+  exit 1
+fi
+
+if [[ $(<"$limit") == 100 ]]; then
+  echo 80 > "$limit"
+else
+  echo 100 > "$limit"
+fi
+
+bunny-notify "Charge Limit" "$(<"$limit")%" --expire-time 3000
