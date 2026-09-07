@@ -109,6 +109,19 @@ if [[ -e /sys/bus/i2c/devices/i2c-PIXA3854:00 ]]; then
   sudo udevadm trigger --subsystem-match=i2c --sysname-match='i2c-PIXA3854:00'
 fi
 
+# Framework battery charge limit (EC state, lost on power cycle)
+if is_framework; then
+  sudo cp "$BUNNY_INSTALL_DEFAULTS_PATH/systemd/framework-charge-limit.service" /etc/systemd/system/framework-charge-limit.service
+  # Don't clobber a limit the user already tuned
+  if [[ ! -f /etc/default/framework-charge-limit ]]; then
+    sudo cp "$BUNNY_INSTALL_DEFAULTS_PATH/systemd/framework-charge-limit.env" /etc/default/framework-charge-limit
+  fi
+  if ! systemctl is-enabled --quiet framework-charge-limit.service; then
+    run_logged "Enable framework-charge-limit service" \
+      sudo systemctl enable framework-charge-limit.service
+  fi
+fi
+
 run_logged "Reloading systemd manager" \
   sudo systemctl daemon-reload
 success "System services configured"

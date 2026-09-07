@@ -1,0 +1,14 @@
+[Unit]
+Description=Set Framework EC battery charge limit
+# The EC forgets the limit across a power cycle, so re-apply it every boot.
+ConditionPathExists=/usr/bin/framework_tool
+
+[Service]
+Type=oneshot
+Environment=CHARGE_LIMIT=80
+EnvironmentFile=-/etc/default/framework-charge-limit
+ExecStart=/usr/bin/framework_tool --charge-limit ${CHARGE_LIMIT}
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target

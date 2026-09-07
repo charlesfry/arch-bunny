@@ -1,0 +1,31 @@
+#!/bin/bash
+set -euo pipefail
+
+limit="${1:-}"
+if [[ ! "$limit" =~ ^-?[0-9]+$ ]]; then
+  echo "usage: $(basename "$0") <10-100> or 0 to uncap the limit" >&2
+  exit 1
+fi
+
+if ((limit < 0)); then
+  echo "Charge limit cannot be negative" >&2
+  exit 1
+fi
+
+# 100 means "charge to full", i.e. no limit at all
+((limit == 0 || limit > 100)) && limit=100
+
+if ((limit < 10)); then
+  echo "Limit must be >=10%" >&2
+  exit 1
+fi
+
+printf '# Framework battery charge limit, in percent (1-100).\n# Apply after editing: sudo systemctl restart framework-charge-limit\nCHARGE_LIMIT=%s\n' \
+  "$limit" | sudo tee /etc/default/framework-charge-limit >/dev/null
+sudo systemctl restart framework-charge-limit
+
+if ((limit == 100)); then
+  echo "Battery charge limit disabled (charges to 100%)"
+else
+  echo "Battery charge limit set to ${limit}%"
+fi
