@@ -27,6 +27,8 @@ binds {
     Mod+Shift+Ctrl+B { spawn "brave" "--incognito"; }
     Mod+Shift+M { spawn "bunny-launch-or-focus" "^Spotify$" "spotify-launcher"; }
     Mod+Shift+T { spawn "kitty" "-e" "btop"; }
+    Mod+Shift+Y { spawn "kitty" "-e" "bluetui"; }
+    Mod+Shift+O { spawn "bunny-launch-wifi"; }
     Mod+Shift+D { spawn "kitty" "-e" "lazydocker"; }
     Mod+Shift+G { spawn "signal-desktop"; }
     Mod+Shift+Slash { spawn "gtk-launch" "bitwarden"; }
