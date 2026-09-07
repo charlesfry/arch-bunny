@@ -328,6 +328,7 @@ EOF
   hidden_overrides=(
     avahi-discover.desktop
     bssh.desktop
+    btop.desktop
     bvnc.desktop
     limine-snapper-restore.desktop
     lstopo.desktop
@@ -344,10 +345,11 @@ EOF
 
   # A same-id user entry replaces the system one outright, so a visible
   # override has to carry its own Exec, and an entry that needs no change
-  # (btop, Alacritty) gets no file here at all.
+  # (Alacritty, which this setup does not install) gets no file here at all.
+  # btop is hidden rather than absent: it is a TUI on Mod+Shift+T, so its
+  # system entry is launcher noise the same way vim.desktop is.
   grep -Fxq 'Hidden=false' "$application_overrides/discord.desktop"
   grep -Fxq 'Exec=discord' "$application_overrides/discord.desktop"
-  [ ! -e "$application_overrides/btop.desktop" ]
   [ ! -e "$application_overrides/Alacritty.desktop" ]
   [ "$(find "$application_overrides" -maxdepth 1 -type f -name '*.desktop' | wc -l)" -eq "$(( ${#hidden_overrides[@]} + 1 ))" ]
   if command -v desktop-file-validate >/dev/null 2>&1; then

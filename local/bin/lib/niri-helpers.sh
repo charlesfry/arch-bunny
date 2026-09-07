@@ -171,9 +171,12 @@ niri_focus_or_spawn() {
   shift
 
   local window_id
+  # app_id only, never the title: matching titles too would focus any window
+  # that merely mentions the app (a terminal editing its config, a browser tab
+  # named after it) instead of launching the app itself.
   # -s slurps the whole stream so first() can't close the pipe early and
   # hand jq a SIGPIPE under `set -o pipefail`
-  window_id="$(niri_windows_matching "$pattern" | jq -r -s 'first(.[]).id // empty')"
+  window_id="$(niri_apps_matching "$pattern" | jq -r -s 'first(.[]).id // empty')"
 
   if [[ -n "$window_id" ]]; then
     niri msg action focus-window --id "$window_id"

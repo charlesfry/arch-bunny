@@ -20,13 +20,13 @@ EOF
 }
 
 @test "focuses a window whose app_id matches" {
-  FAKE_WINDOWS='[{"id":7,"app_id":"Spotify","title":"Some Song"}]'
+  export FAKE_WINDOWS='[{"id":7,"app_id":"Spotify","title":"Some Song"}]'
   run niri_focus_or_spawn spotify spotify-launcher
   [ "$output" = "NIRI: msg action focus-window --id 7" ]
 }
 
 @test "launches when only a title mentions the app" {
-  FAKE_WINDOWS='[{"id":7,"app_id":"kitty","title":"debugging spotify bind"}]'
+  export FAKE_WINDOWS='[{"id":7,"app_id":"kitty","title":"debugging spotify bind"}]'
   run niri_focus_or_spawn spotify spotify-launcher
   [ "$output" = "LAUNCH -- spotify-launcher" ]
 }

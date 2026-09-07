@@ -37,6 +37,12 @@ run_bootstrap_in_tty() {
 }
 
 @test "public submodules use HTTPS URLs" {
+  # The guard, not the assertion: bootstrap.sh clones over HTTPS with no SSH key
+  # available, so any submodule added later has to be reachable the same way.
+  # This repo has no submodules today, and asserting that one exists made the
+  # check fail on its own premise rather than on the thing it guards.
+  [ -f "$repo_root/.gitmodules" ] || skip "repository has no submodules"
+
   run git -C "$repo_root" config --file .gitmodules --get-regexp '^submodule\..*\.url$'
 
   [ "$status" -eq 0 ]
