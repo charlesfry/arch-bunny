@@ -1,0 +1,33 @@
+#!/bin/bash
+# bunny-reminder [<delay> [message...]]
+#
+# One-shot reminder. With no arguments it prompts; otherwise the first word is
+# the delay and the rest is the message.
+#
+# There is no daemon and no timer file. systemd is already running, so
+# `systemd-run --user --on-active` registers a transient unit that exists only
+# until it fires and is then garbage collected.
+set -euo pipefail
+
+input="$*"
+if [[ -z $input ]]; then
+  input=$(bunny-launch-menu "Remind me in (5 stretch / 90s tea / 2h call):" </dev/null) || exit 0
+fi
+[[ -n ${input// /} ]] || exit 0
+
+delay=${input%% *}
+message=${input#* }
+# No space in the input at all: it was a delay with no message.
+[[ $message == "$delay" ]] && message="Reminder"
+
+# A bare number means minutes, which is what you actually type.
+[[ $delay =~ ^[0-9]+$ ]] && delay="${delay}m"
+if [[ ! $delay =~ ^[0-9]+[smh]$ ]]; then
+  bunny-notify -u critical "Reminder" "Not a delay: \"$delay\""
+  exit 1
+fi
+
+systemd-run --user --quiet --on-active="$delay" \
+  bunny-notify -u critical "Reminder" "$message"
+
+bunny-notify "Reminder set" "$message — in $delay"

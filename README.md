@@ -215,6 +215,7 @@ itself; this table mirrors [`config/niri/bindings.kdl`](config/niri/bindings.kdl
 | `Mod+Shift+F` | Nautilus, new window |
 | `Mod+Shift+S` | System menu (sound, Wi-Fi, Bluetooth) |
 | `Mod+Ctrl+V` | Clipboard history (cliphist through fuzzel) |
+| `Mod+Ctrl+T` | Set a reminder (`<delay> <message>`; a bare number means minutes) |
 | `Mod+Comma` | Dismiss the top notification |
 | `Mod+Shift+Comma` | Dismiss all notifications |
 | `Mod+Escape` | Lock the screen |
@@ -381,6 +382,12 @@ like `2TU` and `-1FR`), and `FREQ=YEARLY` on DTSTART's month and day. `INTERVAL`
 ignored and treated as unbounded. Rules using `BYSETPOS` are skipped rather than
 notified on, since expanding the set without applying the selection would fire on
 every member of it, and `BYWEEKNO` and `BYYEARDAY` are not expanded.
+
+**Reminders.** `Mod+Ctrl+T` asks for `<delay> <message>` — `5 stretch`, `90s tea`,
+`2h call`; a bare number is minutes. `systemd-run --user --on-active` registers a
+transient unit that lives only until it fires, so a pending reminder is not a
+process waiting in the background. Reminders fire at critical urgency, which under
+`config/mako/config` means they do not time out on their own.
 
 **Dismissal** is `Mod+Comma` (top notification) and `Mod+Shift+Comma` (all), with
 `bunny-toggle-dnd` on the bar's notification indicator.
