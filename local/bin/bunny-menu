@@ -15,10 +15,12 @@ fi
 options="Sound
   Wifi
   Bluetooth
-  Restart hardware"
+  Restart hardware
+  Change password"
 
 case $(bunny-launch-menu "" <<< "$options") in
   *Restart*)          bunny-menu-hardware ;;
+  *password*)         bunny-menu-password ;;
   *Sound*)            bunny-launch-term-float wiremix ;;
   *Wifi*)             bunny-launch-wifi ;;
   *Bluetooth*)        bunny-launch-bluetooth ;;
