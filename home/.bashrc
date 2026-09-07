@@ -31,8 +31,8 @@ eval "$(direnv hook bash)"
 # every prompt, which the fork-free prompt below exists to avoid. The pwd hook
 # compares $PWD in-shell and only forks when the directory actually changed.
 eval "$(zoxide init bash --cmd cd --hook pwd)"
-# Prompt, toggled by bunny-toggle-prompt. The bash prompt is the default; the
-# marker file opts this machine into starship instead.
+# Prompt, chosen through `bunny-menu-defaults Prompt`. The bash prompt is the
+# default; the marker file opts this machine into starship instead.
 if [[ -e "${XDG_CONFIG_HOME:-$HOME/.config}/bunny/prompt-starship" ]]; then
   eval "$(starship init bash)"
 else

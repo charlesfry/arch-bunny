@@ -16,9 +16,11 @@ options="Sound
   Wifi
   Bluetooth
   Restart hardware
-  Change password"
+  Change password
+  Set defaults"
 
 case $(bunny-launch-menu "" <<< "$options") in
+  *defaults*)         bunny-menu-defaults ;;
   *Restart*)          bunny-menu-hardware ;;
   *password*)         bunny-menu-password ;;
   *Sound*)            bunny-launch-term-float wiremix ;;

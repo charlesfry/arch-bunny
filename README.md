@@ -213,7 +213,7 @@ itself; this table mirrors [`config/niri/bindings.kdl`](config/niri/bindings.kdl
 | `Mod+Shift+G` | Signal |
 | `Mod+Shift+Slash` | Bitwarden |
 | `Mod+Shift+F` | Nautilus, new window |
-| `Mod+Shift+S` | System menu (sound, Wi-Fi, Bluetooth, restart hardware, change password) |
+| `Mod+Shift+S` | System menu (sound, Wi-Fi, Bluetooth, restart hardware, change password, set defaults) |
 | `Mod+Ctrl+O` | Toggle menu (idle, do not disturb, Wi-Fi, Bluetooth, SSH), each showing its state |
 | `Mod+Ctrl+P` | Install or remove a package (repositories or the AUR) |
 | `Mod+Ctrl+V` | Clipboard history (cliphist through fuzzel) |
@@ -361,6 +361,7 @@ Scripts with no keyboard shortcut or menu entry. Invoke these manually from a te
 | `bunny-tuiapp [install\|remove]` | Give a terminal program a launcher entry and a floating window |
 | `bunny-webapp [install\|remove]` | Turn a URL into a launcher entry that opens in its own Brave window, with no browser chrome |
 | `bunny-menu-package` | Install or remove a package without leaving the launcher. Also on `Mod+Ctrl+P` |
+| `bunny-menu-defaults` | Pick the default browser, editor, terminal or shell prompt. Also under `Mod+Shift+S` |
 | `bunny-menu-password` | Change the login password or the LUKS passphrase. Also under `Mod+Shift+S` |
 | `bunny-menu-hardware` | Restart Wi-Fi, Bluetooth, audio, networking or the touchpad individually, instead of rebooting. Also under `Mod+Shift+S` |
 | `bunny-transcode [file]` | Shrink or convert a video (smaller MP4, 720p, GIF, MP3); with no argument it offers what it finds under `~/Videos` and `~/Downloads` |
@@ -458,6 +459,13 @@ setup it replaced.
 | `gu` | Stash, check out the repo's default branch (`main` or `master`), pull, return to your branch, pop |
 | `gur` | `gu`, then rebase onto the default branch |
 | `guri` | `gu`, then interactive rebase onto the default branch |
+
+The prompt is chosen with `bunny-menu-defaults Prompt`, which writes the marker
+file `~/.bashrc` checks; the editor and terminal defaults from the same menu land
+in `~/.config/bunny/defaults` (sourced by `~/.profile`) and
+`~/.config/xdg-terminals.list`. Both are untracked, so one machine's choices do
+not follow the repo. The browser is the exception: it is written into the tracked
+`config/mimeapps.list`, because that is the file XDG actually reads.
 
 `~/.bashrc.local` is sourced if it exists, and is never tracked by git. The installer
 creates it. It is sourced before the aliases and functions below, so redefining one of

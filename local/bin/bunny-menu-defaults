@@ -1,0 +1,102 @@
+#!/bin/bash
+# bunny-menu-defaults [what] [choice]
+#
+# Pick the default browser, editor, terminal or shell prompt.
+#
+# Where a choice lands depends on who reads it:
+#   browser  -> config/mimeapps.list, the file XDG actually consults. That is a
+#               tracked file reached through its stow symlink, so changing the
+#               browser shows up in `git status` -- deliberate: in a dotfiles
+#               repo the config is the repo, and this is a change worth keeping.
+#   editor   -> ~/.config/bunny/defaults, sourced by ~/.profile. Untracked, so
+#               a machine can differ without dirtying the repo.
+#   terminal -> ~/.config/xdg-terminals.list, the XDG list xdg-terminal-exec reads.
+#   prompt   -> the marker file ~/.bashrc already checks.
+set -euo pipefail
+
+CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}"
+DEFAULTS_FILE="$CONFIG_DIR/bunny/defaults"
+PROMPT_MARKER="$CONFIG_DIR/bunny/prompt-starship"
+MIMEAPPS="$CONFIG_DIR/mimeapps.list"
+
+# Only offer what is actually installed.
+installed_from() {
+  local candidate
+  for candidate in "$@"; do
+    command -v "${candidate%%:*}" >/dev/null 2>&1 && printf '%s\n' "${candidate##*:}"
+  done
+}
+
+set_default() {
+  local key=$1 value=$2
+  mkdir -p -- "${DEFAULTS_FILE%/*}"
+  touch -- "$DEFAULTS_FILE"
+  # Rewrite the key in place, or append it if it is not there yet.
+  if grep -q "^export $key=" "$DEFAULTS_FILE"; then
+    sed -i "s|^export $key=.*|export $key=\"$value\"|" "$DEFAULTS_FILE"
+  else
+    printf 'export %s="%s"\n' "$key" "$value" >> "$DEFAULTS_FILE"
+  fi
+}
+
+what="${1:-}"
+if [[ -z $what ]]; then
+  what=$(printf '%s\n' Browser Editor Terminal Prompt | bunny-launch-menu "Default:") || exit 0
+fi
+[[ -n $what ]] || exit 0
+
+choice="${2:-}"
+
+case $what in
+Browser)
+  [[ -n $choice ]] || choice=$(installed_from brave:brave-browser.desktop firefox:firefox.desktop \
+    chromium:chromium.desktop | bunny-launch-menu "Browser:") || exit 0
+  [[ -n $choice ]] || exit 0
+  # Rewrite only the handler lines, so the tracked file stays a clean diff
+  # instead of growing an [Added Associations] block.
+  for key in text/html x-scheme-handler/http x-scheme-handler/https \
+             x-scheme-handler/about x-scheme-handler/unknown; do
+    sed -i "s|^${key}=.*|${key}=${choice}|" "$MIMEAPPS"
+  done
+  bunny-notify "Default browser" "$choice"
+  ;;
+
+Editor)
+  [[ -n $choice ]] || choice=$(installed_from nvim:nvim vim:vim nano:nano helix:hx \
+    | bunny-launch-menu "Editor:") || exit 0
+  [[ -n $choice ]] || exit 0
+  set_default EDITOR "$choice"
+  set_default VISUAL "$choice"
+  bunny-notify "Default editor" "$choice — new shells pick it up"
+  ;;
+
+Terminal)
+  [[ -n $choice ]] || choice=$(installed_from kitty:kitty.desktop foot:foot.desktop \
+    alacritty:Alacritty.desktop | bunny-launch-menu "Terminal:") || exit 0
+  [[ -n $choice ]] || exit 0
+  printf '%s\n' "$choice" > "$CONFIG_DIR/xdg-terminals.list"
+  bunny-notify "Default terminal" "$choice"
+  ;;
+
+Prompt)
+  [[ -n $choice ]] || choice=$(printf '%s\n' \
+    "bash (fork-free, ~3 ms)" \
+    "starship (~7 ms)" | bunny-launch-menu "Prompt:") || exit 0
+  [[ -n $choice ]] || exit 0
+  mkdir -p -- "${PROMPT_MARKER%/*}"
+  case $choice in
+    bash*)
+      rm -f -- "$PROMPT_MARKER"
+      bunny-notify "Prompt" "bash — run 'exec bash' to apply it here" ;;
+    starship*)
+      if ! command -v starship >/dev/null 2>&1; then
+        bunny-notify -u critical "Prompt" "starship is not installed"
+        exit 1
+      fi
+      : > "$PROMPT_MARKER"
+      bunny-notify "Prompt" "starship — run 'exec bash' to apply it here" ;;
+  esac
+  ;;
+
+*) exit 0 ;;
+esac
