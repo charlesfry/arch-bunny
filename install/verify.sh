@@ -275,7 +275,7 @@ main() {
     fail "Omarchy repository uses the expected server"
   fi
   omarchy_siglevel=$(pacman-conf --repo omarchy SigLevel 2>/dev/null || true)
-  for policy in PackageOptional PackageTrustAll DatabaseOptional DatabaseTrustAll; do
+  for policy in PackageRequired PackageTrustedOnly DatabaseOptional DatabaseTrustedOnly; do
     if grep -qx "$policy" <<< "$omarchy_siglevel"; then
       pass "Omarchy signature policy includes: $policy"
     else

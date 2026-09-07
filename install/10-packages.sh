@@ -165,7 +165,7 @@ validate_pacman_configuration() {
 
   local omarchy_siglevel
   omarchy_siglevel=$(pacman-conf --repo omarchy SigLevel)
-  for policy in PackageOptional PackageTrustAll DatabaseOptional DatabaseTrustAll; do
+  for policy in PackageRequired PackageTrustedOnly DatabaseOptional DatabaseTrustedOnly; do
     if ! grep -qx "$policy" <<< "$omarchy_siglevel"; then
       error "Omarchy repository signature policy is missing: $policy"
       return 1
@@ -175,9 +175,34 @@ validate_pacman_configuration() {
   success "Pacman repositories and signature policy validated"
 }
 
+# Fingerprint published in the Omarchy manual:
+# https://keys.openpgp.org/search?q=pkgs%40omarchy.org
+OMARCHY_SIGNING_KEY=${OMARCHY_SIGNING_KEY:-40DFB630FF42BCFFB047046CF0134EE680CAC571}
+
+trust_omarchy_signing_key() {
+  # The repository fragment now says SigLevel = Required, so pacman rejects every
+  # omarchy package until this key is in pacman's keyring and locally signed.
+  #
+  # Not every omarchy package is signed by this key: some are rebuilds signed by
+  # the Arch developer who maintains them upstream (gpu-screen-recorder is signed
+  # by Peter Jung <ptr1337@archlinux.org>). Those verify against archlinux-keyring,
+  # which pacman already trusts, so they need nothing extra here.
+  if sudo pacman-key --list-keys "$OMARCHY_SIGNING_KEY" >/dev/null 2>&1; then
+    success "Omarchy signing key is already in the pacman keyring"
+  else
+    run_logged "Receiving Omarchy signing key" \
+      sudo pacman-key --recv-keys "$OMARCHY_SIGNING_KEY" --keyserver keys.openpgp.org
+  fi
+
+  run_logged "Locally signing Omarchy signing key" \
+    sudo pacman-key --lsign-key "$OMARCHY_SIGNING_KEY"
+  success "Omarchy signing key trusted: $OMARCHY_SIGNING_KEY"
+}
+
 preserve_original_pacman_configuration
 write_managed_pacman_configuration
 validate_pacman_configuration
+trust_omarchy_signing_key
 
 # A full kernel upgrade removes the running kernel's module tree. Keep the
 # netfilter modules needed by UFW resident so the firewall can be configured

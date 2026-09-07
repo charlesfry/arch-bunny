@@ -394,7 +394,7 @@ EOF
   [ "$status" -eq 1 ]
 
   grep -Fxq '[omarchy]' "$pacman_fragment"
-  grep -Fxq 'SigLevel = Optional TrustAll' "$pacman_fragment"
+  grep -Fxq 'SigLevel = Required DatabaseOptional' "$pacman_fragment"
   grep -Fq 'Server = https://pkgs.omarchy.org/stable/$arch' "$pacman_fragment"
 }
 
@@ -442,12 +442,20 @@ EOF
 #!/usr/bin/env bash
 exit 0
 EOF
-  chmod +x "$mock_bin/sudo" "$mock_bin/pacman" "$mock_bin/pacman-conf" "$mock_bin/modprobe"
+  cat > "$mock_bin/pacman-key" <<'EOF'
+#!/usr/bin/env bash
+printf '%s\n' "$*" >> "$PACMAN_KEY_CALLS"
+# --list-keys must fail so the phase exercises the receive path as well as lsign.
+[[ $1 == --list-keys ]] && exit 1
+exit 0
+EOF
+  chmod +x "$mock_bin/sudo" "$mock_bin/pacman" "$mock_bin/pacman-conf" "$mock_bin/modprobe" "$mock_bin/pacman-key"
   cp "$fixture/etc/pacman.conf" "$fixture/original.conf"
 
   pacman_env=(
     "PATH=$mock_bin:$PATH"
     "PACMAN_CALLS=$fixture/pacman.calls"
+    "PACMAN_KEY_CALLS=$fixture/pacman-key.calls"
     "PACMAN_CONF=$fixture/etc/pacman.conf"
     "PACMAN_ORIGINAL_BACKUP=$fixture/etc/pacman.conf.bunny-original"
     "PACMAN_ORIGINAL_CHECKSUM=$fixture/etc/pacman.conf.bunny-original.sha256"
@@ -469,6 +477,8 @@ EOF
   grep -Fxq "Include = $fixture/etc/pacman.d/bunny-repositories.conf" "$fixture/etc/pacman.conf"
   [ "$(grep -Fxc '[omarchy]' "$fixture/etc/pacman.conf")" -eq 0 ]
   grep -Fxq '[omarchy]' "$fixture/etc/pacman.d/bunny-repositories.conf"
+  grep -Fxq -- '--recv-keys 40DFB630FF42BCFFB047046CF0134EE680CAC571 --keyserver keys.openpgp.org' "$fixture/pacman-key.calls"
+  grep -Fxq -- '--lsign-key 40DFB630FF42BCFFB047046CF0134EE680CAC571' "$fixture/pacman-key.calls"
   grep -Fxq -- '-Sy --noconfirm' "$fixture/pacman.calls"
   grep -Fxq -- '-Syu --noconfirm' "$fixture/pacman.calls"
 
