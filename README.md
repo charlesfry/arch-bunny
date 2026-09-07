@@ -356,6 +356,7 @@ Scripts with no keyboard shortcut or menu entry. Invoke these manually from a te
 | `bunny-clear-workspace [--unfocused]` | Close every window on the current workspace, or all but the focused one |
 | `bunny-calc <expression>` | Evaluate an expression with `bc -l`; result to the clipboard. Also on `Mod+Ctrl+E` |
 | `bunny-reminder <delay> <message>` | One-shot reminder through a transient systemd timer. Also on `Mod+Ctrl+T` |
+| `bunny-transcode [file]` | Shrink or convert a video (smaller MP4, 720p, GIF, MP3); with no argument it offers what it finds under `~/Videos` and `~/Downloads` |
 | `bunny-download-video [url]` | Download a video with `yt-dlp`; with no argument, reads the focused browser's address bar. Also on `Mod+Ctrl+Y` |
 | `bunny-toggle-ssh` | Start or stop `sshd` for this boot only; never enables it, so a reboot returns it to off |
 | `bunny-notify` | `notify-send` wrapper that picks a bunny icon by urgency; used by the other scripts |

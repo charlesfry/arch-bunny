@@ -1,0 +1,58 @@
+#!/bin/bash
+# bunny-transcode [file]
+#
+# Shrink or convert a video. With no argument it offers the media it can find
+# under ~/Videos and ~/Downloads.
+#
+# Exists for the moment before sending something: a screen recording is often
+# several times larger than it needs to be, and re-encoding it is faster than
+# apologising for a 150MB attachment.
+set -euo pipefail
+
+input="${1:-}"
+if [[ -z $input ]]; then
+  input=$(fd -e mp4 -e mkv -e webm -e mov -e avi -e m4v . \
+    "$HOME/Videos" "$HOME/Downloads" 2>/dev/null | fuzzel --dmenu) || exit 0
+fi
+[[ -n $input ]] || exit 0
+
+if [[ ! -f $input ]]; then
+  bunny-notify -u critical "Transcode" "No such file: $input"
+  exit 1
+fi
+
+choice=$(printf '%s\n' \
+  "Smaller MP4" \
+  "720p MP4" \
+  "Animated GIF" \
+  "Audio only (MP3)" | bunny-launch-menu "Transcode to:") || exit 0
+[[ -n $choice ]] || exit 0
+
+base=${input%.*}
+case $choice in
+  Smaller*) output="$base.small.mp4"
+            options=(-c:v libx264 -crf 28 -preset veryfast -c:a aac -b:a 128k) ;;
+  720p*)    output="$base.720p.mp4"
+            options=(-vf "scale=-2:720" -c:v libx264 -crf 23 -preset veryfast -c:a aac -b:a 128k) ;;
+  Animated*)
+            # One pass, but a real palette: fps and width come down first, then
+            # palettegen/paletteuse on the reduced stream. A GIF straight off a
+            # 4K source is bigger than the video it came from.
+            output="$base.gif"
+            options=(-vf "fps=12,scale=640:-1:flags=lanczos,split[a][b];[a]palettegen[p];[b][p]paletteuse") ;;
+  Audio*)   output="$base.mp3"
+            options=(-vn -c:a libmp3lame -q:a 2) ;;
+  *)        exit 0 ;;
+esac
+
+bunny-notify "Transcoding" "$(basename -- "$input")"
+
+# -nostdin: without a terminal, ffmpeg reading stdin can consume input meant
+# for whatever spawned it.
+if ffmpeg -nostdin -y -i "$input" "${options[@]}" "$output" >/dev/null 2>&1; then
+  bunny-notify "Transcode finished" "$(basename -- "$output") — $(du -h -- "$output" | cut -f1)"
+else
+  rm -f -- "$output"
+  bunny-notify -u critical "Transcode failed" "$(basename -- "$input")"
+  exit 1
+fi
