@@ -506,6 +506,7 @@ reports which of these dependencies are present.
 | **Screenshots** | [grim](https://sr.ht/~emersion/grim/) + [slurp](https://github.com/emersion/slurp) |
 | **Screen recording** | [gpu-screen-recorder](https://git.dec05eba.com/gpu-screen-recorder/) |
 | **File manager** | [Nautilus](https://apps.gnome.org/Nautilus/) |
+| **Office** | [LibreOffice](https://www.libreoffice.org/) (`libreoffice-fresh`), launched from the app launcher; nothing of it runs until you open a document |
 | **Media** | [mpv](https://mpv.io/) · [imv](https://sr.ht/~exec64/imv/) · [playerctl](https://github.com/altdesktop/playerctl) |
 | **Audio mixer** | [wiremix](https://github.com/nicholasgasior/wiremix) |
 | **Bluetooth** | [bluetui](https://github.com/pythops/bluetui) |
