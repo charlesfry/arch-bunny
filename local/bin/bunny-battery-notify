@@ -20,6 +20,8 @@ if [[ "$status" != "Discharging" ]]; then
 elif (( capacity <= 5 )); then
   level=critical
 elif (( capacity <= 20 )); then
+  level=verylow
+elif ((capacity <= 40)); then
   level=low
 else
   level=none
@@ -44,11 +46,14 @@ notify="$target_home/.local/bin/bunny-notify"
 
 case "$level" in
   critical)
-    as_user "$notify" -c silent -u critical -a battery "BATTERY CRITICAL" "${capacity}% REMAINING"
+    as_user "$notify" -u critical -a battery "BATTERY CRITICAL" "${capacity}% REMAINING"
     as_user brightnessctl -s set 10% >/dev/null
     ;;
+  verylow)
+    as_user "$notify" -u normal -a battery "Battery low" "${capacity}% remaining"
+    ;;
   low)
-    as_user "$notify" -c silent -u normal -a battery "Battery low" "${capacity}% remaining"
+    as_user "$notify" -u normal -a battery "Charge battery" "${capacity}% remaining"
     ;;
   none)
     [[ "$last" == "critical" ]] && as_user brightnessctl -r >/dev/null
