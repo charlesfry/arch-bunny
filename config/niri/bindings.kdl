@@ -31,6 +31,7 @@ binds {
     Mod+Shift+O { spawn "bunny-launch-wifi"; }
     Mod+Shift+D { spawn "kitty" "-e" "lazydocker"; }
     Mod+Shift+G { spawn "signal-desktop"; }
+    Mod+D       { spawn "bunny-launch-or-focus" "discord"; }
     Mod+Shift+Slash { spawn "gtk-launch" "bitwarden"; }
     Mod+Shift+F { spawn "nautilus" "--new-window"; }
     // Bunny: system menu (sound, wifi, bluetooth). Waybar only ever calls
