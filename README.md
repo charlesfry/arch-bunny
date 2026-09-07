@@ -124,13 +124,15 @@ Every subvolume is top-level and mounted from `/etc/fstab`. The finished layout:
 | `@log` | `/var/log` | you, in archinstall | no |
 | `@cache` | `/var/cache` | you, in archinstall | no |
 | `@tmp` | `/var/tmp` | you, in archinstall | no |
-| `@snapshots` | `/.snapshots` | `install/13-bootloader.sh` | no. It **must** be outside `@`, or a rollback that swaps `@` takes the snapshots with it |
+| `@snapshots` | `/.snapshots` | `install/13-bootloader.sh` | no. Outside `@`, so a restore that replaces `@` never has to relocate it |
 | `@dockervol` | `/var/lib/docker` | `install/60-docker.sh` | no. image layers and volumes are rebuildable and huge |
 | `@containerd` | `/var/lib/containerd` | `install/60-docker.sh` | no, same as above |
 
-Snapper puts `/.snapshots` inside `@` by default. `13-bootloader.sh` creates `@snapshots`
-at the top level and remounts it there, which is what makes the factory reset below
-work: the snapshots are not stored inside the subvolume being replaced.
+Snapper puts `/.snapshots` inside `@` by default, which limine-snapper-sync supports —
+`RESTORE_METHOD=replace` rebuilds `@` from a snapshot and moves any child subvolumes
+across. `13-bootloader.sh` creates `@snapshots` at the top level and mounts it from fstab
+instead, so the snapshot store is never a child of the subvolume being replaced and the
+restore has one fewer step that can fail. A convenience, not a requirement.
 
 `60-docker.sh` refuses to run if `/var/lib/docker` or `/var/lib/containerd` already holds
 data outside its subvolume, rather than mounting over it and hiding that data.
@@ -172,15 +174,21 @@ The last install phase takes a Snapper snapshot of the finished system, describe
 `arch-bunny factory state`. It carries no cleanup algorithm, so Snapper never prunes it,
 and limine-snapper-sync lists it in the boot menu.
 
-To return the system to that state, find its number and roll back:
+To return the system to that state, reboot and pick it from the Limine boot menu, then
+restore from inside the booted snapshot:
 
 ```bash
-sudo snapper -c root list | grep 'arch-bunny factory state'
-sudo snapper -c root rollback <number>
-sudo systemctl reboot
+sudo snapper -c root list | grep 'arch-bunny factory state'  # find its number
+sudo systemctl reboot                                        # pick it under "Snapshots"
+bunny-snapshot restore                                       # runs limine-snapper-restore
 ```
 
-This rolls back `/` only. `home` is a separate config, so a reset keeps your files.
+`snapper rollback` does **not** work here. It re-points the btrfs default subvolume, which
+`rootflags=subvol=@` in `/etc/default/limine` overrides, and limine-snapper-sync refuses
+`RESTORE_METHOD=snapper` on this layout for the same reason. `replace` is the method in
+use: it snapshots the chosen state back over `@`.
+
+This restores `/` only. `home` is a separate config, so a reset keeps your files.
 
 ## Keyboard Shortcuts
 
