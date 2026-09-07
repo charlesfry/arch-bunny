@@ -208,6 +208,7 @@ itself; this table mirrors [`config/niri/bindings.kdl`](config/niri/bindings.kdl
 | `Mod+Shift+M` | Spotify |
 | `Mod+Shift+T` | btop in a kitty window |
 | `Mod+Shift+D` | lazydocker in a kitty window |
+| `Mod+Ctrl+D` | Disk usage (ncdu), drill down and delete |
 | `Mod+Shift+G` | Signal |
 | `Mod+Shift+Slash` | Bitwarden |
 | `Mod+Shift+F` | Nautilus, new window |

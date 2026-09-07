@@ -30,6 +30,9 @@ binds {
     Mod+Shift+Y { spawn "kitty" "-e" "bluetui"; }
     Mod+Shift+O { spawn "bunny-launch-wifi"; }
     Mod+Shift+D { spawn "kitty" "-e" "lazydocker"; }
+    // Disk usage, drill-down and delete. ncdu scans on launch and exits with the
+    // window, so nothing about this is resident.
+    Mod+Ctrl+D hotkey-overlay-title="Disk usage: ncdu" { spawn "kitty" "-e" "ncdu" "/"; }
     Mod+Shift+G { spawn "signal-desktop"; }
     Mod+D       { spawn "bunny-launch-or-focus" "discord"; }
     Mod+Shift+Slash { spawn "gtk-launch" "bitwarden"; }
