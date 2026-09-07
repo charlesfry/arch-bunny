@@ -1,0 +1,49 @@
+#!/bin/bash
+# bunny-download-video [url]
+#
+# Download the video in the focused browser tab. With a URL argument it skips
+# straight to the download.
+#
+# No browser exposes its current tab's URL to the outside world without an
+# extension, so with no argument this reads the address bar the way a person
+# would: focus it, copy, put the clipboard back. That makes it inherently a
+# best-effort trick -- it needs a browser focused, and it is the one part of
+# this setup built on synthetic keystrokes.
+set -euo pipefail
+
+DEST="${BUNNY_DOWNLOAD_DIR:-$HOME/Downloads}"
+
+url="${1:-}"
+if [[ -z $url ]]; then
+  previous=$(wl-paste --no-newline 2>/dev/null || true)
+
+  wtype -M ctrl -k l -m ctrl   # focus the address bar
+  sleep 0.15
+  wtype -M ctrl -k c -m ctrl   # copy the URL
+  sleep 0.25
+  url=$(wl-paste --no-newline 2>/dev/null || true)
+  wtype -k Escape              # give focus back to the page
+
+  if [[ -n $previous ]]; then
+    printf '%s' "$previous" | wl-copy
+  else
+    wl-copy --clear
+  fi
+fi
+
+if [[ ! $url =~ ^https?:// ]]; then
+  bunny-notify -u critical "Download" "No URL in the address bar"
+  exit 1
+fi
+
+mkdir -p -- "$DEST"
+bunny-notify "Download started" "$url"
+
+# --no-playlist so a video that happens to sit in a playlist does not pull the
+# whole playlist down behind it.
+if yt-dlp --no-playlist --paths "$DEST" -o '%(title)s.%(ext)s' "$url" >/dev/null 2>&1; then
+  bunny-notify "Download finished" "Saved to ${DEST/#$HOME/\~}"
+else
+  bunny-notify -u critical "Download failed" "$url"
+  exit 1
+fi

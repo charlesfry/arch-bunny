@@ -218,6 +218,7 @@ itself; this table mirrors [`config/niri/bindings.kdl`](config/niri/bindings.kdl
 | `Ctrl+C` / `Ctrl+V` | Copy and paste, in the terminal as well as everywhere else |
 | `Mod+Ctrl+T` | Set a reminder (`<delay> <message>`; a bare number means minutes) |
 | `Mod+Ctrl+E` | Calculator; the result is copied to the clipboard |
+| `Mod+Ctrl+Y` | Download the video in the focused browser tab to `~/Downloads` |
 | `Mod+Comma` | Dismiss the top notification |
 | `Mod+Shift+Comma` | Dismiss all notifications |
 | `Mod+Escape` | Lock the screen |
@@ -355,6 +356,7 @@ Scripts with no keyboard shortcut or menu entry. Invoke these manually from a te
 | `bunny-clear-workspace [--unfocused]` | Close every window on the current workspace, or all but the focused one |
 | `bunny-calc <expression>` | Evaluate an expression with `bc -l`; result to the clipboard. Also on `Mod+Ctrl+E` |
 | `bunny-reminder <delay> <message>` | One-shot reminder through a transient systemd timer. Also on `Mod+Ctrl+T` |
+| `bunny-download-video [url]` | Download a video with `yt-dlp`; with no argument, reads the focused browser's address bar. Also on `Mod+Ctrl+Y` |
 | `bunny-toggle-ssh` | Start or stop `sshd` for this boot only; never enables it, so a reboot returns it to off |
 | `bunny-notify` | `notify-send` wrapper that picks a bunny icon by urgency; used by the other scripts |
 

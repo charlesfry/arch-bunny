@@ -52,6 +52,9 @@ binds {
     // Calculator. The answer lands on the clipboard, which is the point of having
     // it here rather than typing the sum into a shell.
     Mod+Ctrl+E hotkey-overlay-title="Calculator" { spawn "bunny-calc"; }
+    // Download the video in the focused browser tab. Reads the address bar with
+    // synthetic keystrokes, so it needs a browser focused to do anything.
+    Mod+Ctrl+Y hotkey-overlay-title="Download this video" { spawn "bunny-download-video"; }
     Alt+Tab { focus-window-previous; }
     // Bunny: lock moved from stock's Super+Alt+L, since every other L combination is
     // part of the HJKL directional set. `-f` daemonizes so swayidle's `-w` can wait
