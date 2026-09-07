@@ -44,6 +44,9 @@ binds {
     // `bunny-menu power`, so without this bind the no-argument menu had no
     // way in at all.
     Mod+Shift+S hotkey-overlay-title="System menu" { spawn "bunny-menu"; }
+    // Every switch in one place, each line showing its current state. Composes the
+    // bunny-toggle-* scripts, so this and the bar indicators cannot disagree.
+    Mod+Ctrl+O hotkey-overlay-title="Toggles" { spawn "bunny-menu-toggles"; }
     Mod+Ctrl+V { spawn-sh "cliphist list | fuzzel --dmenu | cliphist decode | wl-copy"; }
     // Reminder. Prompts for "<delay> <message>"; a bare number means minutes.
     // Backed by a transient systemd timer, so nothing waits in the background.

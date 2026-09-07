@@ -1,0 +1,44 @@
+#!/bin/bash
+# bunny-menu-toggles
+#
+# One menu for the switches that otherwise mean remembering which bar indicator
+# to click. Every line carries its current state, so this doubles as a status
+# readout: opening it and pressing Escape tells you where things stand.
+#
+# Composes the existing bunny-toggle-* scripts rather than reimplementing them,
+# so the bar indicators and this menu can never disagree.
+set -euo pipefail
+
+on_off() { if "$@" >/dev/null 2>&1; then printf 'on'; else printf 'off'; fi; }
+
+# rfkill reports the block, so an unblocked radio is the "on" case.
+radio_state() {
+  if rfkill list "$1" 2>/dev/null | grep -q "Soft blocked: yes"; then
+    printf 'off'
+  else
+    printf 'on'
+  fi
+}
+
+idle=$(on_off systemctl --user is-active --quiet swayidle.service)
+ssh=$(on_off systemctl is-active --quiet sshd)
+wifi=$(radio_state wifi)
+bluetooth=$(radio_state bluetooth)
+# dnd suppresses notifications, so "on" here means notifications are silenced.
+if makoctl mode 2>/dev/null | grep -qx dnd; then dnd=on; else dnd=off; fi
+
+choice=$(printf '%s\n' \
+  "Idle and lock        $idle" \
+  "Do not disturb       $dnd" \
+  "Wi-Fi                $wifi" \
+  "Bluetooth            $bluetooth" \
+  "SSH server           $ssh" \
+  | bunny-launch-menu "Toggle:") || exit 0
+
+case $choice in
+  "Idle and lock"*)  bunny-toggle-idle ;;
+  "Do not disturb"*) bunny-toggle-dnd ;;
+  "Wi-Fi"*)          bunny-toggle-wifi ;;
+  "Bluetooth"*)      bunny-toggle-bluetooth ;;
+  "SSH server"*)     bunny-toggle-ssh ;;
+esac

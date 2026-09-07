@@ -214,6 +214,7 @@ itself; this table mirrors [`config/niri/bindings.kdl`](config/niri/bindings.kdl
 | `Mod+Shift+Slash` | Bitwarden |
 | `Mod+Shift+F` | Nautilus, new window |
 | `Mod+Shift+S` | System menu (sound, Wi-Fi, Bluetooth) |
+| `Mod+Ctrl+O` | Toggle menu (idle, do not disturb, Wi-Fi, Bluetooth, SSH), each showing its state |
 | `Mod+Ctrl+V` | Clipboard history (cliphist through fuzzel) |
 | `Ctrl+C` / `Ctrl+V` | Copy and paste, in the terminal as well as everywhere else |
 | `Mod+Ctrl+T` | Set a reminder (`<delay> <message>`; a bare number means minutes) |
