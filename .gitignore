@@ -4,6 +4,7 @@
 .claude
 /tmp/*
 .envrc
+/TODO/
 
 # Scratch log dump at the repo root. Ignored on purpose, never committed. I am very mature.
 /poop
