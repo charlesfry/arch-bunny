@@ -34,18 +34,6 @@ sudo mkdir -p /etc/udev/rules.d
 sed "s|@BIN@|$HOME/.local/bin|" "$BUNNY_INSTALL_DEFAULTS_PATH/udev/99-battery-notify.rules" |
   sudo tee /etc/udev/rules.d/99-battery-notify.rules >/dev/null
 
-# Charge ceiling (bunny-toggle-charge-limit). The modprobe opt-in is what makes
-# the kernel expose charge_control_end_threshold on Framework hardware at all;
-# the udev rule then hands that attribute to wheel so the toggle skips sudo.
-sudo mkdir -p /etc/modprobe.d
-sudo cp "$BUNNY_INSTALL_DEFAULTS_PATH/modprobe/cros-charge-control.conf" /etc/modprobe.d/cros-charge-control.conf
-sudo cp "$BUNNY_INSTALL_DEFAULTS_PATH/udev/99-charge-limit.rules" /etc/udev/rules.d/99-charge-limit.rules
-if lsmod | grep -q '^cros_charge_control'; then
-  run_logged "Reloading cros_charge-control with the Framework opt-in" \
-    sudo modprobe -r cros_charge-control
-  sudo modprobe cros_charge-control
-fi
-
 run_logged "Reloading udev rules" \
   sudo udevadm control --reload-rules
 sudo udevadm trigger --subsystem-match=power_supply
