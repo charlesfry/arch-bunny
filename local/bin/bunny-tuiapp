@@ -1,0 +1,85 @@
+#!/bin/bash
+# bunny-tuiapp [install [name] [command] | remove [name]]
+#
+# Give a terminal program a launcher entry and a floating window, so a TUI is
+# reachable the same way a GUI app is.
+#
+# Deliberately not sharing code with bunny-webapp. The two are the same shape
+# but differ in what they exec, what they float and what they are categorised
+# as, and a shared desktop-entry abstraction for two callers would be more to
+# read than the duplication it removes.
+set -euo pipefail
+
+APPLICATIONS_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/applications"
+PREFIX=bunny-tui
+
+slugify() {
+  printf '%s' "$1" | tr '[:upper:]' '[:lower:]' | tr -cs 'a-z0-9' '-' | sed 's/^-*//; s/-*$//'
+}
+
+action="${1:-}"
+if [[ -z $action ]]; then
+  action=$(printf '%s\n' install remove | bunny-launch-menu "TUI app:") || exit 0
+fi
+
+case $action in
+install)
+  name="${2:-}"
+  command_line="${3:-}"
+  [[ -n $command_line ]] || command_line=$(bunny-launch-menu "Command:" </dev/null) || exit 0
+  [[ -n $command_line ]] || exit 0
+  [[ -n $name ]] || name=$(bunny-launch-menu "Name:" </dev/null) || exit 0
+  [[ -n $name ]] || exit 0
+
+  slug=$(slugify "$name")
+  [[ -n $slug ]] || { bunny-notify -u critical "TUI app" "Name has no usable characters"; exit 1; }
+  class="$PREFIX-$slug"
+
+  # Warn but continue: the command may be installed later, and refusing to
+  # write the entry would be more annoying than a launcher entry that does
+  # nothing yet.
+  if ! command -v "${command_line%% *}" >/dev/null 2>&1; then
+    bunny-notify "TUI app" "${command_line%% *} is not installed yet"
+  fi
+
+  mkdir -p -- "$APPLICATIONS_DIR"
+  # Its own app-id, matched by the ^bunny-tui- window rule in
+  # config/niri/window-rules.kdl, which is what makes it float. Not
+  # bunny-launch-term-float: that uses dot.float, which window-rules.laptop.kdl
+  # explicitly pins to non-floating.
+  cat > "$APPLICATIONS_DIR/$class.desktop" <<EOF
+[Desktop Entry]
+Type=Application
+Name=$name
+Exec=kitty --app-id=$class -e $command_line
+Icon=utilities-terminal
+StartupWMClass=$class
+Categories=System;
+EOF
+
+  update-desktop-database "$APPLICATIONS_DIR" 2>/dev/null || true
+  bunny-notify "TUI app installed" "$name"
+  ;;
+
+remove)
+  name="${2:-}"
+  if [[ -z $name ]]; then
+    mapfile -t entries < <(find "$APPLICATIONS_DIR" -maxdepth 1 -name "$PREFIX-*.desktop" -printf '%f\n' 2>/dev/null | sed "s/^$PREFIX-//; s/\.desktop$//" | sort)
+    ((${#entries[@]})) || { bunny-notify "TUI app" "None installed"; exit 0; }
+    name=$(printf '%s\n' "${entries[@]}" | bunny-launch-menu "Remove:") || exit 0
+  fi
+  [[ -n $name ]] || exit 0
+
+  slug=$(slugify "$name")
+  entry="$APPLICATIONS_DIR/$PREFIX-$slug.desktop"
+  if [[ ! -f $entry ]]; then
+    bunny-notify -u critical "TUI app" "Not installed: $name"
+    exit 1
+  fi
+  rm -f -- "$entry"
+  update-desktop-database "$APPLICATIONS_DIR" 2>/dev/null || true
+  bunny-notify "TUI app removed" "$name"
+  ;;
+
+*) exit 0 ;;
+esac

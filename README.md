@@ -358,6 +358,7 @@ Scripts with no keyboard shortcut or menu entry. Invoke these manually from a te
 | `bunny-clear-workspace [--unfocused]` | Close every window on the current workspace, or all but the focused one |
 | `bunny-calc <expression>` | Evaluate an expression with `bc -l`; result to the clipboard. Also on `Mod+Ctrl+E` |
 | `bunny-reminder <delay> <message>` | One-shot reminder through a transient systemd timer. Also on `Mod+Ctrl+T` |
+| `bunny-tuiapp [install\|remove]` | Give a terminal program a launcher entry and a floating window |
 | `bunny-webapp [install\|remove]` | Turn a URL into a launcher entry that opens in its own Brave window, with no browser chrome |
 | `bunny-menu-package` | Install or remove a package without leaving the launcher. Also on `Mod+Ctrl+P` |
 | `bunny-menu-password` | Change the login password or the LUKS passphrase. Also under `Mod+Shift+S` |

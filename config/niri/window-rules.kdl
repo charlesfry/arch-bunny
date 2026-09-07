@@ -44,6 +44,19 @@ window-rule {
     open-maximized true
 }
 
+// TUI apps installed by bunny-tuiapp. Floating, so reaching for a monitor or a
+// quick lookup does not rearrange the tiled columns. Their own app-id prefix
+// rather than dot.float, which window-rules.laptop.kdl pins to non-floating.
+window-rule {
+  match app-id="^bunny-tui-"
+
+  open-floating true
+  open-focused true
+
+  default-column-width { proportion 0.6; }
+  default-window-height { proportion 0.6; }
+}
+
 // ASCII screensaver. Fullscreen and focused so it actually covers the screen,
 // rather than opening as one more tiled column.
 window-rule {
