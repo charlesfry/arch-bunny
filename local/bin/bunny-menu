@@ -14,9 +14,11 @@ fi
 
 options="Sound
   Wifi
-  Bluetooth"
+  Bluetooth
+  Restart hardware"
 
 case $(bunny-launch-menu "" <<< "$options") in
+  *Restart*)          bunny-menu-hardware ;;
   *Sound*)            bunny-launch-term-float wiremix ;;
   *Wifi*)             bunny-launch-wifi ;;
   *Bluetooth*)        bunny-launch-bluetooth ;;

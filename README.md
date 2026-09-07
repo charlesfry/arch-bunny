@@ -213,7 +213,7 @@ itself; this table mirrors [`config/niri/bindings.kdl`](config/niri/bindings.kdl
 | `Mod+Shift+G` | Signal |
 | `Mod+Shift+Slash` | Bitwarden |
 | `Mod+Shift+F` | Nautilus, new window |
-| `Mod+Shift+S` | System menu (sound, Wi-Fi, Bluetooth) |
+| `Mod+Shift+S` | System menu (sound, Wi-Fi, Bluetooth, restart hardware) |
 | `Mod+Ctrl+O` | Toggle menu (idle, do not disturb, Wi-Fi, Bluetooth, SSH), each showing its state |
 | `Mod+Ctrl+V` | Clipboard history (cliphist through fuzzel) |
 | `Ctrl+C` / `Ctrl+V` | Copy and paste, in the terminal as well as everywhere else |
@@ -357,6 +357,7 @@ Scripts with no keyboard shortcut or menu entry. Invoke these manually from a te
 | `bunny-clear-workspace [--unfocused]` | Close every window on the current workspace, or all but the focused one |
 | `bunny-calc <expression>` | Evaluate an expression with `bc -l`; result to the clipboard. Also on `Mod+Ctrl+E` |
 | `bunny-reminder <delay> <message>` | One-shot reminder through a transient systemd timer. Also on `Mod+Ctrl+T` |
+| `bunny-menu-hardware` | Restart Wi-Fi, Bluetooth, audio, networking or the touchpad individually, instead of rebooting. Also under `Mod+Shift+S` |
 | `bunny-transcode [file]` | Shrink or convert a video (smaller MP4, 720p, GIF, MP3); with no argument it offers what it finds under `~/Videos` and `~/Downloads` |
 | `bunny-download-video [url]` | Download a video with `yt-dlp`; with no argument, reads the focused browser's address bar. Also on `Mod+Ctrl+Y` |
 | `bunny-toggle-ssh` | Start or stop `sshd` for this boot only; never enables it, so a reboot returns it to off |
