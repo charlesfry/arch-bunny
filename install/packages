@@ -3,6 +3,7 @@ base
 base-devel
 bat
 bats
+bc
 bemenu-wayland
 bitwarden
 bluetui

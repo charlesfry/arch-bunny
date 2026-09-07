@@ -216,6 +216,7 @@ itself; this table mirrors [`config/niri/bindings.kdl`](config/niri/bindings.kdl
 | `Mod+Shift+S` | System menu (sound, Wi-Fi, Bluetooth) |
 | `Mod+Ctrl+V` | Clipboard history (cliphist through fuzzel) |
 | `Mod+Ctrl+T` | Set a reminder (`<delay> <message>`; a bare number means minutes) |
+| `Mod+Ctrl+E` | Calculator; the result is copied to the clipboard |
 | `Mod+Comma` | Dismiss the top notification |
 | `Mod+Shift+Comma` | Dismiss all notifications |
 | `Mod+Escape` | Lock the screen |
@@ -351,6 +352,8 @@ Scripts with no keyboard shortcut or menu entry. Invoke these manually from a te
 | `bunny-snapshot-list` | Snapshot disk usage, human-readable |
 | `bunny-update-location [--add <location>]` | Map the current Wi-Fi SSID to a weather location |
 | `bunny-clear-workspace [--unfocused]` | Close every window on the current workspace, or all but the focused one |
+| `bunny-calc <expression>` | Evaluate an expression with `bc -l`; result to the clipboard. Also on `Mod+Ctrl+E` |
+| `bunny-reminder <delay> <message>` | One-shot reminder through a transient systemd timer. Also on `Mod+Ctrl+T` |
 | `bunny-notify` | `notify-send` wrapper that picks a bunny icon by urgency; used by the other scripts |
 
 ## Notifications

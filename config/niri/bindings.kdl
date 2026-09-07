@@ -49,6 +49,9 @@ binds {
     // Backed by a transient systemd timer, so nothing waits in the background.
     // Not Mod+Ctrl+R, which is already reset-window-height.
     Mod+Ctrl+T hotkey-overlay-title="Set a reminder" { spawn "bunny-reminder"; }
+    // Calculator. The answer lands on the clipboard, which is the point of having
+    // it here rather than typing the sum into a shell.
+    Mod+Ctrl+E hotkey-overlay-title="Calculator" { spawn "bunny-calc"; }
     Alt+Tab { focus-window-previous; }
     // Bunny: lock moved from stock's Super+Alt+L, since every other L combination is
     // part of the HJKL directional set. `-f` daemonizes so swayidle's `-w` can wait

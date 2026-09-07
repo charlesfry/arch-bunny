@@ -1,0 +1,34 @@
+#!/bin/bash
+# bunny-calc [expression]
+#
+# One-shot calculator. With no arguments it prompts. The result is shown as a
+# notification and left on the clipboard, which is the reason to reach for this
+# instead of a shell: the answer is ready to paste.
+#
+# bc -l, so sqrt(), s(), c(), l() and e() are available and division is not
+# integer division.
+set -euo pipefail
+
+expression="$*"
+if [[ -z $expression ]]; then
+  expression=$(bunny-launch-menu "=" </dev/null) || exit 0
+fi
+[[ -n ${expression// /} ]] || exit 0
+
+# bc reports syntax errors on stderr and still exits 0, so an empty result is
+# the only reliable failure signal. `|| true` because pipefail would otherwise
+# abort here on a non-zero bc -- including bc missing entirely -- and skip the
+# check below that turns that into a readable message.
+result=$(printf '%s\n' "$expression" | bc -l 2>/dev/null | tail -n1) || true
+if [[ -z $result ]]; then
+  bunny-notify -u critical "Calculator" "Cannot evaluate: $expression"
+  exit 1
+fi
+
+# bc -l fixes scale at 20, so every non-integer answer arrives padded with
+# zeros. Trim them, then a bare trailing point, then restore a leading zero
+# that bc omits (.5 reads as a typo).
+result=$(sed -e 's/\(\.[0-9]*[1-9]\)0*$/\1/' -e 's/\.0*$//' -e 's/^\./0./' -e 's/^-\./-0./' <<<"$result")
+
+printf '%s' "$result" | wl-copy
+bunny-notify "$expression = $result" "Copied to the clipboard"
