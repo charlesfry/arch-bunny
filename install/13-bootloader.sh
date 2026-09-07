@@ -74,10 +74,8 @@ done
 # Framework Laptop 13 AMD Ryzen AI 300 firmware exposes an unwired ACP mic that
 # confuses ALSA's Capture Source mux into reverting to a dead capture path.
 # https://github.com/FrameworkComputer/SoftwareFirmwareIssueTracker/issues/166
-system_vendor=$(cat /sys/class/dmi/id/sys_vendor 2>/dev/null || true)
 product_name=$(cat /sys/class/dmi/id/product_name 2>/dev/null || true)
-if [[ $system_vendor == Framework &&
-      $product_name == "Laptop 13 (AMD Ryzen AI 300 Series)" ]]; then
+if is_framework && [[ $product_name == "Laptop 13 (AMD Ryzen AI 300 Series)" ]]; then
   CMDLINE+=" $framework_audio_blacklist"
   log "Blacklisting the phantom Framework ACP microphone from the kernel command line"
 fi

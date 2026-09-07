@@ -325,6 +325,13 @@ command_exists() {
   command -v "$1" >/dev/null 2>&1
 }
 
+# Vendor only, deliberately: everything gated on this is EC-level and holds for
+# any Framework model. Callers that need one specific machine check the product
+# name themselves on top of this.
+is_framework() {
+  [[ $(cat /sys/class/dmi/id/sys_vendor 2>/dev/null) == Framework ]]
+}
+
 verify_user_ownership() {
   local path unexpected_owner
 

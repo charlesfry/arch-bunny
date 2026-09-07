@@ -24,6 +24,15 @@ if ((${#required_packages[@]} == 0)); then
   return 1
 fi
 
+# framework_tool only talks to the Framework EC, so it is gated on the vendor
+# instead of living in the flat package list. It owns the battery charge limit:
+# the EC's own limiter overrides the kernel's charge_control_end_threshold, so
+# cros_charge-control silently does nothing on this hardware.
+if is_framework; then
+  mapfile -t -O "${#required_packages[@]}" required_packages \
+    < <(grep -Ev '^(#|[[:space:]]*$)' "$BUNNY_INSTALL/packages-framework")
+fi
+
 preserve_original_pacman_configuration() {
   local saved_hash current_hash
 
