@@ -44,11 +44,11 @@ notify="$target_home/.local/bin/bunny-notify"
 
 case "$level" in
   critical)
-    as_user "$notify" -u critical -a battery "BATTERY CRITICAL" "${capacity}% REMAINING"
+    as_user "$notify" -c silent -u critical -a battery "BATTERY CRITICAL" "${capacity}% REMAINING"
     as_user brightnessctl -s set 10% >/dev/null
     ;;
   low)
-    as_user "$notify" -u normal -a battery "Battery low" "${capacity}% remaining"
+    as_user "$notify" -c silent -u normal -a battery "Battery low" "${capacity}% remaining"
     ;;
   none)
     [[ "$last" == "critical" ]] && as_user brightnessctl -r >/dev/null

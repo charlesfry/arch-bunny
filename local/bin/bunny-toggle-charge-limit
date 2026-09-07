@@ -14,8 +14,9 @@ fi
 
 if [[ $(<"$limit") == 100 ]]; then
   echo 80 > "$limit"
+  bunny-notify "Charge Limit" "$(<"$limit")%" --expire-time 3000 -c silent
 else
   echo 100 > "$limit"
+  bunny-notify "Charge Limit Removed" "" --expire-time 3000 -c silent
 fi
 
-bunny-notify "Charge Limit" "$(<"$limit")%" --expire-time 3000

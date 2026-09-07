@@ -36,6 +36,10 @@ border-color=#bd62c5ff
 #layer=overlay
 on-notify=exec mpv --no-config --no-video --really-quiet "$HOME/.config/mako/sound-critical.mp3"
 
+# notify-send -c silent
+[category=silent]
+on-notify=none
+
 # Last so it also silences criticals
 [mode=dnd]
 invisible=1
