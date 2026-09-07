@@ -215,6 +215,7 @@ itself; this table mirrors [`config/niri/bindings.kdl`](config/niri/bindings.kdl
 | `Mod+Shift+F` | Nautilus, new window |
 | `Mod+Shift+S` | System menu (sound, Wi-Fi, Bluetooth, restart hardware, change password) |
 | `Mod+Ctrl+O` | Toggle menu (idle, do not disturb, Wi-Fi, Bluetooth, SSH), each showing its state |
+| `Mod+Ctrl+P` | Install or remove a package (repositories or the AUR) |
 | `Mod+Ctrl+V` | Clipboard history (cliphist through fuzzel) |
 | `Ctrl+C` / `Ctrl+V` | Copy and paste, in the terminal as well as everywhere else |
 | `Mod+Ctrl+T` | Set a reminder (`<delay> <message>`; a bare number means minutes) |
@@ -357,6 +358,7 @@ Scripts with no keyboard shortcut or menu entry. Invoke these manually from a te
 | `bunny-clear-workspace [--unfocused]` | Close every window on the current workspace, or all but the focused one |
 | `bunny-calc <expression>` | Evaluate an expression with `bc -l`; result to the clipboard. Also on `Mod+Ctrl+E` |
 | `bunny-reminder <delay> <message>` | One-shot reminder through a transient systemd timer. Also on `Mod+Ctrl+T` |
+| `bunny-menu-package` | Install or remove a package without leaving the launcher. Also on `Mod+Ctrl+P` |
 | `bunny-menu-password` | Change the login password or the LUKS passphrase. Also under `Mod+Shift+S` |
 | `bunny-menu-hardware` | Restart Wi-Fi, Bluetooth, audio, networking or the touchpad individually, instead of rebooting. Also under `Mod+Shift+S` |
 | `bunny-transcode [file]` | Shrink or convert a video (smaller MP4, 720p, GIF, MP3); with no argument it offers what it finds under `~/Videos` and `~/Downloads` |

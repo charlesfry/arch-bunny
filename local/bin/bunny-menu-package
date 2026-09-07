@@ -1,0 +1,52 @@
+#!/bin/bash
+# bunny-menu-package [action] [package]
+#
+# Install or remove a package without leaving the launcher.
+#
+# Everything runs in a terminal, and none of it passes --noconfirm: pacman's
+# own "these are the packages that will be removed, proceed?" is the safety
+# here, and hiding it behind a menu that just says "done" would be worse than
+# not having the menu.
+set -euo pipefail
+
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=local/bin/lib/helpers.sh
+source "$SCRIPT_DIR/lib/helpers.sh"
+
+action="${1:-}"
+package="${2:-}"
+
+if [[ -z $action ]]; then
+  action=$(printf '%s\n' \
+    "Install a package" \
+    "Install from the AUR" \
+    "Remove a package" \
+    | bunny-launch-menu "Packages:") || exit 0
+fi
+[[ -n $action ]] || exit 0
+
+# fuzzel rather than bemenu for the two long lists: the repositories are some
+# fifteen thousand entries and fuzzel filters that without complaint. The AUR
+# is far larger again and not worth enumerating, so that one is typed.
+if [[ -z $package ]]; then
+  case $action in
+    "Install a package")    package=$(pacman -Slq | fuzzel --dmenu) || exit 0 ;;
+    "Install from the AUR") package=$(bunny-launch-menu "AUR package:" </dev/null) || exit 0 ;;
+    "Remove a package")     package=$(pacman -Qqe | fuzzel --dmenu) || exit 0 ;;
+    *) exit 0 ;;
+  esac
+fi
+package=${package// /}
+[[ -n $package ]] || exit 0
+
+require_terminal "$0" "$action" "$package"
+
+case $action in
+  "Install a package")    sudo pacman -S --needed -- "$package" ;;
+  "Install from the AUR") yay -S --needed -- "$package" ;;
+  "Remove a package")     sudo pacman -Rns -- "$package" ;;
+  *) exit 0 ;;
+esac
+
+read -r -n1 -s -p "Done. Press any key to close."
+echo
