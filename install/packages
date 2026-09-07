@@ -11,6 +11,7 @@ brightnessctl
 btop
 btrfs-progs
 cliphist
+cmatrix
 cryptsetup
 curl
 direnv

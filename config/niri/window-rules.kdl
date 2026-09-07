@@ -44,6 +44,14 @@ window-rule {
     open-maximized true
 }
 
+// ASCII screensaver. Fullscreen and focused so it actually covers the screen,
+// rather than opening as one more tiled column.
+window-rule {
+  match app-id="^bunny-screensaver$"
+  open-fullscreen true
+  open-focused true
+}
+
 // Window currently being recorded — loud border so it's obvious what's live
 window-rule {
   match is-window-cast-target=true

@@ -397,6 +397,26 @@ process waiting in the background. Reminders fire at critical urgency, which und
 **Dismissal** is `Mod+Comma` (top notification) and `Mod+Shift+Comma` (all), with
 `bunny-toggle-dnd` on the bar's notification indicator.
 
+### Idle and the screensaver
+
+swayidle owns the whole idle sequence, and it is the only thing running while
+you are at the machine:
+
+| After | Happens |
+|---|---|
+| 3 minutes | ASCII screensaver (`bunny-screensaver`, cmatrix in a fullscreen kitty) |
+| 5 minutes | Screensaver stops, session locks (hyprlock) |
+| 10 minutes | Monitors power off |
+
+Any input stops the screensaver and returns you where you were. It is stopped
+at the lock rather than left running underneath it: a cmatrix rendering forever
+behind a lock screen with the monitors off is the kind of quiet battery drain
+this setup exists to avoid.
+
+The whole sequence is four lines of `config/systemd/user/swayidle.service`, so
+the timings are one edit away. `bunny-toggle-idle`, on the bar's idle indicator,
+stops swayidle entirely when you do not want any of it.
+
 ### Weather
 
 The bar's weather module reads `~/.config/bunny/weather-location`, and
@@ -504,7 +524,7 @@ reports which of these dependencies are present.
 | **Notifications** | [mako](https://github.com/emersion/mako) |
 | **Lock screen** | [hyprlock](https://github.com/hyprwm/hyprlock) |
 | **Wallpaper** | [swaybg](https://github.com/swaywm/swaybg) |
-| **Idle management** | [swayidle](https://github.com/swaywm/swayidle) |
+| **Idle management** | [swayidle](https://github.com/swaywm/swayidle), which also owns the screensaver below |
 | **OSD overlays** | [swayosd](https://github.com/ErikReider/SwayOSD) |
 | **Boot splash** | [plymouth](https://gitlab.freedesktop.org/plymouth/plymouth), with the `bunny` theme from `install/default/plymouth/` |
 | **Clipboard** | wl-clipboard |

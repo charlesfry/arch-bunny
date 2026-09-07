@@ -7,7 +7,8 @@ Requisite=graphical-session.target
 [Service]
 Type=simple
 ExecStart=/usr/bin/swayidle \
-  timeout 300 "loginctl lock-session" \
+  timeout 180 "bunny-screensaver" resume "bunny-screensaver --stop" \
+  timeout 300 "bunny-screensaver --stop; loginctl lock-session" \
   timeout 600 "niri msg action power-off-monitors" \
   lock "bunny-launch-lock-screen" \
   before-sleep "loginctl lock-session"

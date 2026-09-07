@@ -1,0 +1,27 @@
+#!/bin/bash
+# bunny-screensaver [--stop]
+#
+# ASCII screensaver. Started by swayidle after a short idle and stopped again
+# on resume or when the session locks.
+#
+# Nothing here is resident: swayidle is already running and owns the timers, so
+# this process exists only while you are away from the machine. It is stopped
+# at the lock timeout rather than left running behind hyprlock -- a cmatrix
+# rendering forever behind a lock screen with the monitors off is exactly the
+# kind of quiet battery drain this setup exists to avoid.
+set -euo pipefail
+
+APP_ID=bunny-screensaver
+
+if [[ ${1:-} == --stop ]]; then
+  pkill -f "app-id=$APP_ID" || true
+  exit 0
+fi
+
+# swayidle can re-fire a timeout across a resume it did not observe. Without
+# this guard a second screensaver would stack on top of the first.
+if pgrep -f "app-id=$APP_ID" >/dev/null; then
+  exit 0
+fi
+
+exec kitty --app-id="$APP_ID" -e cmatrix -b -u 6
