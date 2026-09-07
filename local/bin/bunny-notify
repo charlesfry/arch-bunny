@@ -9,6 +9,7 @@ while [[ $# -gt 0 ]]; do
   case "$1" in
     -u|--urgency) urgency="$2"; args+=("$1" "$2"); shift 2 ;;
     --urgency=*) urgency="${1#*=}"; args+=("$1"); shift ;;
+    -s|--silent) args+=(-c silent); shift ;;
     -i|--icon) has_icon=1; args+=("$1" "$2"); shift 2 ;;
     --icon=*) has_icon=1; args+=("$1"); shift ;;
     *) args+=("$1"); shift ;;
