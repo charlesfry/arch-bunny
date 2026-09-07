@@ -200,6 +200,7 @@ itself; this table mirrors [`config/niri/bindings.kdl`](config/niri/bindings.kdl
 | Shortcut | Action |
 |---|---|
 | `Mod+Return` | Terminal (kitty) |
+| `Mod+Shift+Return` | `tmux-sessionizer`: fzf a project directory, then create or attach its tmux session |
 | `Mod+Space` | Launcher (fuzzel) |
 | `Mod+Shift+Space` | Ask the hivemind (`bunny-hivemind`, one-sentence answer in a floating terminal) |
 | `Mod+Shift+N` | Neovim in a kitty window |
@@ -445,6 +446,9 @@ creates `~/.gitconfig` for that reason. Git reads both files, and anything in
 | Binding | Action |
 |---|---|
 | `prefix+f` | `tmux-sessionizer`: fzf a project directory, then create or attach a session named for it |
+
+The same thing from outside a terminal is `Mod+Shift+Return`, which opens a fresh
+kitty straight into the picker.
 
 Sessions are named `<dir>-<hash>`, so same-named directories in different trees stay
 distinct.
