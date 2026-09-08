@@ -16,18 +16,18 @@ if ! command_exists limine-snapper-sync; then
   return 1
 fi
 
+# Detect boot mode before changing boot configuration.
+if [[ ! -d /sys/firmware/efi ]]; then
+  error "Not EFI system"
+  return 1
+fi
+
 # Step 1: Extract existing kernel command line from bootloader config
 step "Reading the existing kernel command line"
 
 sudo tee /etc/mkinitcpio.conf.d/bunny_hooks.conf <<EOF >/dev/null
 HOOKS=(base udev plymouth keyboard autodetect microcode modconf kms keymap block encrypt filesystems btrfs-overlayfs)
 EOF
-
-# Detect boot mode
-if [[ ! -d /sys/firmware/efi ]]; then
-  error "Not EFI system"
-  return 1
-fi
 
 # Find config location. The ESP may only be readable by root.
 step "Finding the Limine configuration"
