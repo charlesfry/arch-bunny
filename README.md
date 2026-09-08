@@ -180,7 +180,7 @@ restore from inside the booted snapshot:
 ```bash
 sudo snapper -c root list | grep 'arch-bunny factory state'  # find its number
 sudo systemctl reboot                                        # pick it under "Snapshots"
-bunny-snapshot restore                                       # runs limine-snapper-restore
+bunny-snapshot restore                                       # confirms, then limine-snapper-restore
 ```
 
 `snapper rollback` does **not** work here. It re-points the btrfs default subvolume, which
@@ -344,7 +344,9 @@ Scripts with no keyboard shortcut or menu entry. Invoke these manually from a te
 | `bunny-dev` | Install, inspect, or remove optional development environments |
 | `bunny-update` | Update system packages and optionally reboot |
 | `bunny-migrate` | Re-link arch-bunny's dotfiles and remove orphaned symlinks |
-| `bunny-snapshot <create\|restore\|delete>` | Snapper snapshots across every configured config |
+| `bunny-snapshot create [description]` | Snapshot every configured config (default description `manual`) |
+| `bunny-snapshot restore` | Restore the booted snapshot, after confirming |
+| `bunny-snapshot delete <config> <number>` | Delete one snapshot |
 | `bunny-snapshot-list` | Snapshot disk usage, human-readable |
 | `bunny-update-location [--add <location>]` | Map the current Wi-Fi SSID to a weather location |
 | `bunny-clear-workspace [--unfocused]` | Close every window on the current workspace, or all but the focused one |
