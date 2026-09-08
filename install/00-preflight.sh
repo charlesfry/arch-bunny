@@ -52,14 +52,28 @@ else
   return 1
 fi
 
+step "Checking EFI boot mode"
+if [[ ! -d /sys/firmware/efi ]]; then
+  error "EFI boot mode is required"
+  return 1
+fi
+success "EFI boot mode detected"
+
 # Must have secure boot disabled
 step "Checking Secure Boot"
-if bootctl status 2>/dev/null | grep -q 'Secure Boot: enabled'; then
+if ! bootctl_status=$(bootctl status 2>&1); then
+  error "Unable to determine Secure Boot status: $bootctl_status"
+  return 1
+fi
+if grep -q 'Secure Boot: enabled' <<< "$bootctl_status"; then
   error "Secure boot needs to be disabled"
   return 1
-else
-  success "Secure boot is disabled"
 fi
+if ! grep -q 'Secure Boot: disabled' <<< "$bootctl_status"; then
+  error "Unable to determine Secure Boot status: $bootctl_status"
+  return 1
+fi
+success "Secure boot is disabled"
 
 step "Checking for pacman"
 if command_exists pacman; then
