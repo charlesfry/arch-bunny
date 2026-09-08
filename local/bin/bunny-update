@@ -2,7 +2,12 @@
 
 set -e
 
-trap 'echo ""; echo -e "\033[0;31mSomething went wrong during the update!\n\nPlease review the output above carefully, correct the error, and retry the update.\033[0m";bunny-snapshot delete' ERR
+update_failed() {
+  printf '\n\e[0;31mSomething went wrong during the update!\n\nPlease review the output above carefully, correct the error, and retry the update.\e[0m\n'
+  printf '\e[0;31mThe pre-update snapshot was kept; see bunny-snapshot-list.\e[0m\n'
+}
+
+trap update_failed ERR
 
 confirm() {
   local prompt="$1"
@@ -26,8 +31,10 @@ if ! confirm "Continue with update?"; then
 fi
 
 update_log="/tmp/bunny-update.log"
-# Create snapshot before update
-bunny-snapshot create || [ $? -eq 127 ]
+
+if command -v bunny-snapshot >/dev/null; then
+  bunny-snapshot create pre-update
+fi
 
 exec > >(tee "$update_log") 2>&1
 
