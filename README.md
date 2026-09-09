@@ -168,11 +168,45 @@ sudo pacman -S --needed curl && bash <(curl -fsSL https://raw.githubusercontent.
 
 The install script, **install.sh**, is *Idempotent*, meaning you can rerun it at any point if you want to download the latest version of this repo and get the newest changes without overwriting your current settings.
 
+#### Optional extras
+
+`install/packages` is what every machine gets. `install/packages-extra` (official repos)
+and `install/packages-extra-yay` (AUR) hold packages that are *offered*, not assumed. The
+last install phase lists whichever of them are missing and asks once:
+
+```
+Optional extras are not installed:
+  wine
+  winetricks
+  ...
+
+Install them now? [y/N]
+```
+
+Answering no is a successful install. Nothing records the answer, so a rerun asks again.
+Answering yes makes them required for that run — if any of them fails to install, the
+whole installation fails rather than finishing with a half-built set.
+
+The current contents are the Wine/Proton stack for running Ableton Live under Valve's
+Wine fork. Wine costs nothing at boot or at idle — it ships no systemd unit, and
+`wineserver` exits a few seconds after the last Wine process — so the only price is disk.
+
+| Flag | Effect |
+| --- | --- |
+| `--base` | Install the base system only, never prompt |
+| `--extras` | Install the base system and every extra, never prompt |
+| `--auto-reboot` | Reboot when the install finishes, never prompt |
+
+With no flag on a non-interactive run (piped output, CI) the extras are skipped, so an
+unattended install never blocks on the question. `bootstrap.sh` does not forward these
+flags; pass them to `install.sh` directly.
+
 ### Factory reset
 
-The last install phase takes a Snapper snapshot of the finished system, described
-`arch-bunny factory state`. It carries no cleanup algorithm, so Snapper never prunes it,
-and limine-snapper-sync lists it in the boot menu.
+`install/70-factory-snapshot.sh` takes a Snapper snapshot of the finished system,
+described `arch-bunny factory state`. It carries no cleanup algorithm, so Snapper never
+prunes it, and limine-snapper-sync lists it in the boot menu. Optional extras install
+*after* that snapshot, so a factory restore always returns a lean base system.
 
 To return the system to that state, reboot and pick it from the Limine boot menu, then
 restore from inside the booted snapshot:
