@@ -1,0 +1,5 @@
+# Ableton Live requirements
+winetricks
+lutris
+lib32-pipewire-jack
+umu-launcher

@@ -15,6 +15,51 @@ if ((EUID == 0)); then
   exit 1
 fi
 
+usage() {
+  cat <<'EOF'
+Usage: install.sh [--base|--extras] [--auto-reboot]
+
+Options:
+      --base          Install the base system only, without prompting about the
+                      optional packages in install/packages-extra*
+      --extras        Install the base system and every optional package,
+                      without prompting
+      --auto-reboot   Reboot when the installation finishes, without prompting
+  -h, --help          Show this help message
+
+With neither --base nor --extras, the installer asks once at the end before
+installing any optional package that is missing. Answering no is still a
+successful install; answering yes makes them required, and the run fails if any
+of them fails to install.
+EOF
+}
+
+BUNNY_AUTO_REBOOT=0
+while (($# > 0)); do
+  case "$1" in
+    --base)
+      BUNNY_INSTALL_EXTRAS=0
+      ;;
+    --extras)
+      BUNNY_INSTALL_EXTRAS=1
+      ;;
+    --auto-reboot)
+      BUNNY_AUTO_REBOOT=1
+      ;;
+    -h|--help)
+      usage
+      exit 0
+      ;;
+    *)
+      _startup_error "Unknown option: $1"
+      usage >&2
+      exit 1
+      ;;
+  esac
+  shift
+done
+export BUNNY_INSTALL_EXTRAS="${BUNNY_INSTALL_EXTRAS:-}"
+
 if [[ -z "${BUNNY_PATH:-}" ]]; then
   BUNNY_PATH=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
   export BUNNY_PATH
@@ -164,6 +209,9 @@ run_phase "50-firewall.sh" "Firewall"
 run_phase "60-docker.sh" "Docker"
 run_phase "70-factory-snapshot.sh" "Factory snapshot"
 
+# After the factory snapshot on purpose: a factory restore returns a lean base
+run_phase "80-extras.sh" "Optional extras"
+
 export BUNNY_CURRENT_PHASE="complete"
 log "Installation finished: run=$BUNNY_INSTALL_RUN_ID status=0"
 printf '\n'
@@ -177,7 +225,9 @@ else
 fi
 
 reboot_answer=
-if ((BUNNY_INTERACTIVE_OUTPUT)); then
+if ((BUNNY_AUTO_REBOOT)); then
+  reboot_answer=y
+elif ((BUNNY_INTERACTIVE_OUTPUT)); then
   read -rp "Reboot now? [y/N] " reboot_answer </dev/tty || true
 else
   printf 'Reboot to start the configured desktop session.\n'
