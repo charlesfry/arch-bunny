@@ -653,7 +653,7 @@ EOF
   grep -Fq 'run_logged "Requesting system reboot" sudo systemctl reboot' "$repo_root/install.sh"
 }
 
-@test "optional extras are skipped by default and required once accepted" {
+@test "bunny-experimental-install-extras installs and verifies every extra" {
   fixture=$BATS_TEST_TMPDIR/extras
   mock_bin=$fixture/bin
   mkdir -p "$mock_bin" "$fixture/install"
@@ -689,40 +689,36 @@ exec "$@"
 EOF
   chmod +x "$mock_bin/pacman" "$mock_bin/yay" "$mock_bin/sudo"
 
-  run_extras_phase() {
+  run_extras() {
     : > "$fixture/installed.db"
     : > "$fixture/pacman.calls"
     : > "$fixture/yay.calls"
-    # shellcheck disable=SC2016 # positional arguments expand in the child shell
     run env \
       PATH="$mock_bin:$PATH" \
       INSTALLED_DB="$fixture/installed.db" \
       PACMAN_CALLS="$fixture/pacman.calls" \
       YAY_CALLS="$fixture/yay.calls" \
-      BUNNY_INSTALL="$fixture/install" \
-      BUNNY_INSTALL_LOG_FILE="$fixture/install.log" \
-      BUNNY_INSTALL_EXTRAS="$1" \
-      MOCK_YAY_INSTALLS="${2:-1}" \
-      bash -c 'set -e; source "$1"; source "$2"' _ \
-      "$repo_root/install/lib/helpers.sh" "$repo_root/install/80-extras.sh"
+      BUNNY_PATH="$fixture" \
+      MOCK_YAY_INSTALLS="${1:-1}" \
+      "$repo_root/local/bin/bunny-experimental-install-extras"
   }
 
-  # Declining is a successful install that touches nothing.
-  run_extras_phase 0
-  [ "$status" -eq 0 ]
-  [ ! -s "$fixture/pacman.calls" ]
-  [ ! -s "$fixture/yay.calls" ]
-
-  # Accepting installs the repository half with pacman and the AUR half with yay.
-  run_extras_phase 1
+  # The repository half goes through pacman, the AUR half through yay.
+  run_extras
   [ "$status" -eq 0 ]
   grep -Fxq -- '-S --noconfirm --needed wine lib32-pipewire-jack' "$fixture/pacman.calls"
   grep -Fxq -- '-S --noconfirm --needed wineasio' "$fixture/yay.calls"
 
-  # Accepted extras are required: a package that never landed fails the run.
-  run_extras_phase 1 0
+  # Extras are required: a package that never landed fails the run.
+  run_extras 0
   [ "$status" -ne 0 ]
   [[ $output == *"Failed to verify optional package: wineasio"* ]]
+}
+
+@test "install.sh skips extras unless --extras is passed" {
+  grep -Fq 'if ((BUNNY_INSTALL_EXTRAS)); then' "$installer_script"
+  grep -Fq 'bunny-experimental-install-extras' "$installer_script"
+  [ ! -e "$repo_root/install/80-extras.sh" ]
 }
 
 @test "installer flags choose extras and reboot without prompting" {
@@ -742,7 +738,6 @@ EOF
   # Arguments parse before any installation state exists.
   [ ! -e "$flag_home/.local/state/arch-bunny" ]
 
-  grep -Fq 'BUNNY_INSTALL_EXTRAS=0' "$installer_script"
   grep -Fq 'BUNNY_INSTALL_EXTRAS=1' "$installer_script"
   grep -Fq 'if ((BUNNY_AUTO_REBOOT)); then' "$installer_script"
   grep -Fq 'reboot_answer=y' "$installer_script"

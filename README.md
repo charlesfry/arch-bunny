@@ -171,21 +171,17 @@ The install script, **install.sh**, is *Idempotent*, meaning you can rerun it at
 #### Optional extras
 
 `install/packages` is what every machine gets. `install/packages-extra` (official repos)
-and `install/packages-extra-yay` (AUR) hold packages that are *offered*, not assumed. The
-last install phase lists whichever of them are missing and asks once:
+and `install/packages-extra-yay` (AUR) hold packages that are *offered*, not assumed.
+A plain install never touches them, which keeps the base system small enough to test on
+its own. To install them, either pass `--extras` to `install.sh` or run the command at
+any later time:
 
-```
-Optional extras are not installed:
-  wine
-  winetricks
-  ...
-
-Install them now? [y/N]
+```bash
+bunny-experimental-install-extras
 ```
 
-Answering no is a successful install. Nothing records the answer, so a rerun asks again.
-Answering yes makes them required for that run — if any of them fails to install, the
-whole installation fails rather than finishing with a half-built set.
+It installs whichever of the extras are missing and verifies each one afterwards, so a
+package that yay silently skipped fails the run instead of passing unnoticed.
 
 The current contents are the Wine/Proton stack for running Ableton Live under Valve's
 Wine fork. Wine costs nothing at boot or at idle — it ships no systemd unit, and
@@ -193,19 +189,17 @@ Wine fork. Wine costs nothing at boot or at idle — it ships no systemd unit, a
 
 | Flag | Effect |
 | --- | --- |
-| `--base` | Install the base system only, never prompt |
-| `--extras` | Install the base system and every extra, never prompt |
+| `--base` | Install the base system only — the default |
+| `--extras` | Install the base system, then every extra |
 | `--auto-reboot` | Reboot when the install finishes, never prompt |
 
-With no flag on a non-interactive run (piped output, CI) the extras are skipped, so an
-unattended install never blocks on the question. `bootstrap.sh` does not forward these
-flags; pass them to `install.sh` directly.
+`bootstrap.sh` does not forward these flags; pass them to `install.sh` directly.
 
 ### Factory reset
 
 `install/70-factory-snapshot.sh` takes a Snapper snapshot of the finished system,
 described `arch-bunny factory state`. It carries no cleanup algorithm, so Snapper never
-prunes it, and limine-snapper-sync lists it in the boot menu. Optional extras install
+prunes it, and limine-snapper-sync lists it in the boot menu. `--extras` installs
 *after* that snapshot, so a factory restore always returns a lean base system.
 
 To return the system to that state, reboot and pick it from the Limine boot menu, then
