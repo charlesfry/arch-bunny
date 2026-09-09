@@ -1,0 +1,49 @@
+#!/bin/bash
+
+# Installs the optional packages listed in install/packages-extra and
+# install/packages-extra-yay.
+
+set -euo pipefail
+
+repo=${BUNNY_PATH:-$HOME/arch-bunny}
+
+list_missing() {
+  local package
+  [[ -f $1 ]] || return 0
+  while read -r package; do
+    pacman -Q "$package" >/dev/null 2>&1 || printf '%s\n' "$package"
+  done < <(grep -Ev '^(#|[[:space:]]*$)' "$1")
+}
+
+mapfile -t missing_repo < <(list_missing "$repo/install/packages-extra")
+mapfile -t missing_aur < <(list_missing "$repo/install/packages-extra-yay")
+
+if ((${#missing_repo[@]} + ${#missing_aur[@]} == 0)); then
+  echo "All optional extras are already installed"
+  exit 0
+fi
+
+if ((${#missing_repo[@]} > 0)); then
+  sudo pacman -S --noconfirm --needed "${missing_repo[@]}"
+fi
+
+if ((${#missing_aur[@]} > 0)); then
+  if ! command -v yay >/dev/null 2>&1; then
+    echo "yay is not installed. Run install.sh first" >&2
+    exit 1
+  fi
+  # Unprivileged on purpose: makepkg refuses to run as root, and yay calls
+  # `sudo pacman -U` itself for the install step. See install/14-aur.sh.
+  yay -S --noconfirm --needed "${missing_aur[@]}"
+fi
+
+# yay can exit 0 with a package silently skipped as an unresolvable dependency,
+# so the exit status alone does not prove anything landed.
+verify_failed=0
+for package in "${missing_repo[@]}" "${missing_aur[@]}"; do
+  if ! pacman -Q "$package" >/dev/null 2>&1; then
+    echo "Failed to verify optional package: $package" >&2
+    verify_failed=1
+  fi
+done
+exit "$verify_failed"

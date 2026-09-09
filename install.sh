@@ -20,21 +20,21 @@ usage() {
 Usage: install.sh [--base|--extras] [--auto-reboot]
 
 Options:
-      --base          Install the base system only, without prompting about the
-                      optional packages in install/packages-extra*
-      --extras        Install the base system and every optional package,
-                      without prompting
+      --base          Install the base system only. The default; accepted so
+                      that spelling it out still works.
+      --extras        Also install every optional package in
+                      install/packages-extra*, by running
+                      bunny-experimental-install-extras at the end
       --auto-reboot   Reboot when the installation finishes, without prompting
   -h, --help          Show this help message
 
-With neither --base nor --extras, the installer asks once at the end before
-installing any optional package that is missing. Answering no is still a
-successful install; answering yes makes them required, and the run fails if any
-of them fails to install.
+Extras are never installed unless --extras is passed, and once asked for they
+are required: the run fails if any of them fails to install.
 EOF
 }
 
 BUNNY_AUTO_REBOOT=0
+BUNNY_INSTALL_EXTRAS=0
 while (($# > 0)); do
   case "$1" in
     --base)
@@ -58,7 +58,6 @@ while (($# > 0)); do
   esac
   shift
 done
-export BUNNY_INSTALL_EXTRAS="${BUNNY_INSTALL_EXTRAS:-}"
 
 if [[ -z "${BUNNY_PATH:-}" ]]; then
   BUNNY_PATH=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
@@ -210,7 +209,13 @@ run_phase "60-docker.sh" "Docker"
 run_phase "70-factory-snapshot.sh" "Factory snapshot"
 
 # After the factory snapshot on purpose: a factory restore returns a lean base
-run_phase "80-extras.sh" "Optional extras"
+if ((BUNNY_INSTALL_EXTRAS)); then
+  export BUNNY_CURRENT_PHASE="extras"
+  section_start "Optional extras"
+  run_logged "Installing optional extras" \
+    "$BUNNY_PATH/local/bin/bunny-experimental-install-extras"
+  section_complete "Optional extras"
+fi
 
 export BUNNY_CURRENT_PHASE="complete"
 log "Installation finished: run=$BUNNY_INSTALL_RUN_ID status=0"

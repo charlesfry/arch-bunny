@@ -17,8 +17,8 @@ setup() {
     "$repo_root/install/40-user-setup.sh"
     "$repo_root/install/50-firewall.sh"
     "$repo_root/install/60-docker.sh"
-    "$repo_root/install/80-extras.sh"
     "$repo_root/install/lib/helpers.sh"
+    "$repo_root/local/bin/bunny-experimental-install-extras"
   )
 }
 
