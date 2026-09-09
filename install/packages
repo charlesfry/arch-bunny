@@ -61,6 +61,7 @@ pipewire-pulse
 plymouth
 polkit-gnome
 power-profiles-daemon
+python-gobject
 ripgrep
 rtkit
 satty
