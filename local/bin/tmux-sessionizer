@@ -18,7 +18,8 @@ if ! tmux has-session -t="$name" 2>/dev/null; then
   tmux new-session -ds "$name" -c "$selected" -n vim
   tmux send-keys -t "$name":1 vim Enter
   tmux new-window -t "$name" -c "$selected"
-  tmux select-window -t "$name":1
+  tmux new-window -t "$name" -c "$selected"
+  tmux select-window -t "$name":2
 fi
 
 if [[ -z $TMUX ]]; then

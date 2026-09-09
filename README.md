@@ -341,9 +341,10 @@ Scripts with no keyboard shortcut or menu entry. Invoke these manually from a te
 
 | Command | Description |
 |---|---|
-| `bunny-theme-background` | Set desktop wallpaper from a file path or URL |
+| `bunny-wallpaper` | Set desktop wallpaper from a file path or URL |
 | `bunny-dev` | Install, inspect, or remove optional development environments |
 | `bunny-update` | Update system packages and optionally reboot |
+| `bunny-system` | Inspect and manage battery limits, power profiles, power actions, snapshots, and updates |
 | `bunny-migrate` | Re-link arch-bunny's dotfiles and remove orphaned symlinks |
 | `bunny-snapshot create [description]` | Snapshot every configured config (default description `manual`) |
 | `bunny-snapshot restore` | Restore the booted snapshot, after confirming |
