@@ -231,10 +231,10 @@ binds {
     // Expel the bottom window from the focused column to the right.
     Mod+Shift+Comma { spawn "makoctl" "dismiss" "--all"; }
 
+    Mod+R hotkey-overlay-title="Set a reminder" { spawn "bunny-launch-remind"; }
+
     // Cycle through widths set in preset-column-widths.
-    Mod+R { switch-preset-column-width; }
-    // Cycling through the presets in reverse order is also possible.
-    Mod+Shift+R { switch-preset-column-width-back; }
+    Mod+Shift+R { switch-preset-column-width; }
 
     Mod+Ctrl+Shift+R { switch-preset-window-height; }
     Mod+Ctrl+R { reset-window-height; }

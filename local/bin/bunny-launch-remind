@@ -1,0 +1,14 @@
+#!/bin/bash
+# Prompt for bunny-remind: "2.5 take the bread out". fuzzel's --prompt-only is a
+# free-text field — no stdin, no list — and it centers itself, which bemenu's
+# --center does not do under the Wayland backend.
+input=$(fuzzel --dmenu --prompt-only="  Remind me in… " \
+  --font="SpaceMono Nerd Font:size=22" --line-height=48 --width=46)
+[[ -n "$input" ]] || exit 0
+
+minutes=${input%% *}
+message=${input#"$minutes"}
+# Nothing reads stderr from a keybind, so a bad number has to come back as a
+# notification or the press just looks like it did nothing.
+bunny-remind "$minutes" "${message# }" ||
+  bunny-notify -a reminder "Reminder" "Start with the minutes, e.g. 2.5 take the bread out"

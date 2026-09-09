@@ -202,6 +202,7 @@ itself; this table mirrors [`config/niri/bindings.kdl`](config/niri/bindings.kdl
 | `Mod+Return` | Terminal (kitty) |
 | `Mod+Space` | Launcher (fuzzel) |
 | `Mod+Shift+Space` | Ask the hivemind (`bunny-hivemind`, one-sentence answer in a floating terminal) |
+| `Mod+R` | Set a reminder (`bunny-launch-remind`, minutes then message, e.g. `2.5 take the bread out`) |
 | `Mod+Shift+N` | Neovim in a kitty window |
 | `Mod+Shift+B` | Brave |
 | `Mod+Shift+Ctrl+B` | Brave, incognito window |
@@ -270,7 +271,7 @@ itself; this table mirrors [`config/niri/bindings.kdl`](config/niri/bindings.kdl
 | `Mod+Ctrl+F` | Expand column into the free space |
 | `Mod+C` | Center the column |
 | `Mod+Ctrl+C` | Center all visible columns |
-| `Mod+R` / `Mod+Shift+R` | Cycle preset column widths forward/back |
+| `Mod+Shift+R` | Cycle preset column widths |
 | `Mod+Ctrl+Shift+R` | Cycle preset window heights |
 | `Mod+Ctrl+R` | Reset window height |
 | `Mod+Minus` / `Mod+Equal` | Column width −10% / +10% |
@@ -350,6 +351,7 @@ Scripts with no keyboard shortcut or menu entry. Invoke these manually from a te
 | `bunny-snapshot-list` | Snapshot disk usage, human-readable |
 | `bunny-update-location [--add <location>]` | Map the current Wi-Fi SSID to a weather location |
 | `bunny-clear-workspace [--unfocused]` | Close every window on the current workspace, or all but the focused one |
+| `bunny-remind <minutes> [message]` | Critical notification after that many minutes; decimals allowed (`2.5` is 2m30s) |
 | `bunny-notify` | `notify-send` wrapper that picks a bunny icon by urgency; used by the other scripts |
 
 ## Notifications

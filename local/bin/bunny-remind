@@ -1,0 +1,20 @@
+#!/bin/bash
+# Fire a critical notification after N minutes. Decimals welcome: 2.5 is 2m30s.
+set -euo pipefail
+
+minutes="${1:-}"
+if [[ ! "$minutes" =~ ^[0-9]*\.?[0-9]+$ ]] || [[ "$minutes" =~ ^0*\.?0*$ ]]; then
+  echo "usage: $(basename "$0") <minutes> [message]" >&2
+  exit 1
+fi
+message="${2:-}"
+[[ -n "$message" ]] || message="Time is up"
+
+# systemd parses "2.5min" itself, so no float math here. A transient timer also
+# outlives the terminal that started it, which a backgrounded sleep would not.
+systemd-run --user --quiet --collect \
+  --on-active="${minutes}min" --timer-property=AccuracySec=1s \
+  --unit="bunny-remind-$$-$RANDOM" \
+  "$HOME/.local/bin/bunny-notify" -u critical -a reminder Reminder "$message"
+
+echo "Reminder in $(systemd-analyze timespan "${minutes}min" | awk '/Human:/{$1="";print substr($0,2)}'): $message"
