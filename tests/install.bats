@@ -653,6 +653,101 @@ EOF
   grep -Fq 'run_logged "Requesting system reboot" sudo systemctl reboot' "$repo_root/install.sh"
 }
 
+@test "optional extras are skipped by default and required once accepted" {
+  fixture=$BATS_TEST_TMPDIR/extras
+  mock_bin=$fixture/bin
+  mkdir -p "$mock_bin" "$fixture/install"
+  printf '# optional\n\nwine\nlib32-pipewire-jack\n' > "$fixture/install/packages-extra"
+  printf '# optional\nwineasio\n' > "$fixture/install/packages-extra-yay"
+
+  # -Q answers from a state file the install arguments append to, so a package
+  # only reads as installed once something actually installed it.
+  cat > "$mock_bin/pacman" <<'EOF'
+#!/usr/bin/env bash
+if [[ ${1:-} == -Q ]]; then
+  grep -Fxq "${2:-}" "$INSTALLED_DB"
+  exit
+fi
+printf '%s\n' "$*" >> "$PACMAN_CALLS"
+for argument in "$@"; do
+  [[ $argument == -* ]] || printf '%s\n' "$argument" >> "$INSTALLED_DB"
+done
+EOF
+  # MOCK_YAY_INSTALLS=0 exits 0 without installing, which is how yay behaves
+  # when it silently skips an unresolvable dependency.
+  cat > "$mock_bin/yay" <<'EOF'
+#!/usr/bin/env bash
+printf '%s\n' "$*" >> "$YAY_CALLS"
+[[ ${MOCK_YAY_INSTALLS:-1} == 1 ]] || exit 0
+for argument in "$@"; do
+  [[ $argument == -* ]] || printf '%s\n' "$argument" >> "$INSTALLED_DB"
+done
+EOF
+  cat > "$mock_bin/sudo" <<'EOF'
+#!/usr/bin/env bash
+exec "$@"
+EOF
+  chmod +x "$mock_bin/pacman" "$mock_bin/yay" "$mock_bin/sudo"
+
+  run_extras_phase() {
+    : > "$fixture/installed.db"
+    : > "$fixture/pacman.calls"
+    : > "$fixture/yay.calls"
+    # shellcheck disable=SC2016 # positional arguments expand in the child shell
+    run env \
+      PATH="$mock_bin:$PATH" \
+      INSTALLED_DB="$fixture/installed.db" \
+      PACMAN_CALLS="$fixture/pacman.calls" \
+      YAY_CALLS="$fixture/yay.calls" \
+      BUNNY_INSTALL="$fixture/install" \
+      BUNNY_INSTALL_LOG_FILE="$fixture/install.log" \
+      BUNNY_INSTALL_EXTRAS="$1" \
+      MOCK_YAY_INSTALLS="${2:-1}" \
+      bash -c 'set -e; source "$1"; source "$2"' _ \
+      "$repo_root/install/lib/helpers.sh" "$repo_root/install/80-extras.sh"
+  }
+
+  # Declining is a successful install that touches nothing.
+  run_extras_phase 0
+  [ "$status" -eq 0 ]
+  [ ! -s "$fixture/pacman.calls" ]
+  [ ! -s "$fixture/yay.calls" ]
+
+  # Accepting installs the repository half with pacman and the AUR half with yay.
+  run_extras_phase 1
+  [ "$status" -eq 0 ]
+  grep -Fxq -- '-S --noconfirm --needed wine lib32-pipewire-jack' "$fixture/pacman.calls"
+  grep -Fxq -- '-S --noconfirm --needed wineasio' "$fixture/yay.calls"
+
+  # Accepted extras are required: a package that never landed fails the run.
+  run_extras_phase 1 0
+  [ "$status" -ne 0 ]
+  [[ $output == *"Failed to verify optional package: wineasio"* ]]
+}
+
+@test "installer flags choose extras and reboot without prompting" {
+  flag_home=$BATS_TEST_TMPDIR/flag-home
+  mkdir -p "$flag_home"
+
+  run env HOME="$flag_home" "$installer_script" --help
+  [ "$status" -eq 0 ]
+  [[ $output == *"--base"* ]]
+  [[ $output == *"--extras"* ]]
+  [[ $output == *"--auto-reboot"* ]]
+
+  run env HOME="$flag_home" "$installer_script" --extra
+  [ "$status" -eq 1 ]
+  [[ $output == *"Unknown option: --extra"* ]]
+
+  # Arguments parse before any installation state exists.
+  [ ! -e "$flag_home/.local/state/arch-bunny" ]
+
+  grep -Fq 'BUNNY_INSTALL_EXTRAS=0' "$installer_script"
+  grep -Fq 'BUNNY_INSTALL_EXTRAS=1' "$installer_script"
+  grep -Fq 'if ((BUNNY_AUTO_REBOOT)); then' "$installer_script"
+  grep -Fq 'reboot_answer=y' "$installer_script"
+}
+
 @test "SwayOSD CSS declarations contain separators" {
   run grep -nE '^ *[a-zA-Z-]+ +[^:;]+;' "$swayosd_style"
   [ "$status" -eq 1 ]
