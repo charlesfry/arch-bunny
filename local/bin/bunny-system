@@ -49,7 +49,7 @@ ac_power_state() {
 }
 
 battery_status() {
-  local path limit capacity state ac_state description
+  local path capacity state ac_state description
   if ! path=$(battery_path); then
     printf 'Battery: unavailable\n'
     return
@@ -66,18 +66,6 @@ battery_status() {
     *) description=$(tr '[:upper:]' '[:lower:]' <<<"$state") ;;
   esac
   printf 'Battery: %s%% (%s)\n' "$capacity" "$description"
-  if command_available framework_tool; then
-    require_sudo
-    if limit=$(sudo framework_tool --charge-limit 2>&1) &&
-      [[ $limit =~ Minimum[[:space:]]+([0-9]+)%,[[:space:]]+Maximum[[:space:]]+([0-9]+)% ]]; then
-      printf 'Charge limit: %s%% (minimum %s%%)\n' \
-        "${BASH_REMATCH[2]}" "${BASH_REMATCH[1]}"
-    else
-      printf 'Charge limit: unavailable\n'
-    fi
-  else
-    printf 'Charge limit: framework_tool is not installed\n'
-  fi
 }
 
 battery_limit() {
