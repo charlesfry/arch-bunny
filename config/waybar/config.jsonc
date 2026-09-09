@@ -15,9 +15,7 @@
     "custom/weather",
     "custom/dnd",
     "custom/idle-indicator",
-    "custom/screenrecord-indicator",
-    "custom/screenshare-indicator",
-    "custom/webcam-indicator"
+    "custom/screenrecord-indicator"
   ],
   "modules-center": [
     "niri/workspaces"

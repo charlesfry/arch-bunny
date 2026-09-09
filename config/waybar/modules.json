@@ -62,16 +62,6 @@
     "signal": 9,
     "return-type": "json"
   },
-  "custom/webcam-indicator": {
-    "exec": "$HOME/.config/waybar/indicators/webcam.sh",
-    "return-type": "json",
-    "interval": 5
-  },
-  "custom/screenshare-indicator": {
-    "exec": "$HOME/.config/waybar/indicators/screenshare.sh",
-    "return-type": "json",
-    "interval": 5
-  },
   "custom/dnd": {
     "on-click": "bunny-toggle-dnd",
     "exec": "$HOME/.config/waybar/indicators/dnd.sh",

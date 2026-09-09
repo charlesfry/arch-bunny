@@ -359,8 +359,8 @@ indicator for `bunny-toggle-idle`, the notification indicator for
 (gpu-screen-recorder, toggles), the volume module to mute/unmute, the network
 module for `bunny-launch-wifi`, and the battery module for `bunny-menu power`.
 
-The bar also carries read-only indicators for webcam and screen-share activity, a
-workspace-position dot strip (`niri-window-position`), and a weather module (see
+The bar also carries a workspace-position dot strip
+(`niri-window-position`) and a weather module (see
 [Weather](#weather) below, which needs one command to set up).
 
 ## Commands

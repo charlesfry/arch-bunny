@@ -32,8 +32,6 @@ window#waybar {
 #workspaces,
 #custom-idle-indicator,
 #custom-screenrecord-indicator,
-#custom-webcam-indicator,
-#custom-screenshare-indicator,
 #custom-dnd,
 #custom-weather,
 #custom-niri-window-position {
@@ -118,8 +116,6 @@ tooltip * {
 
 #custom-idle-indicator,
 #custom-screenrecord-indicator,
-#custom-webcam-indicator,
-#custom-screenshare-indicator,
 #custom-dnd {
   font-size: 12px;
   padding: 0 6px;
@@ -131,8 +127,6 @@ tooltip * {
   opacity: 0.7;
 }
 
-#custom-screenrecord-indicator,
-#custom-webcam-indicator,
-#custom-screenshare-indicator {
+#custom-screenrecord-indicator {
   color: #d26f66;
 }
