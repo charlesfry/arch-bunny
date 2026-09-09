@@ -1,0 +1,6 @@
+[Desktop Entry]
+Type=Application
+Name=Google Messages
+Exec=brave --app=https://messages.google.com/web/
+Terminal=false
+Categories=Network;InstantMessaging;
