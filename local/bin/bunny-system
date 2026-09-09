@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+COMMAND_DIR=${BUNNY_SYSTEM_COMMAND_DIR:-$SCRIPT_DIR}
+
 usage() {
   cat >&2 <<'EOF'
 Usage:
@@ -9,6 +12,11 @@ Usage:
   bunny-system battery limit <25-100>
   bunny-system power-profile [status]
   bunny-system power-profile set <balanced|performance|power-saver>
+  bunny-system suspend
+  bunny-system restart
+  bunny-system shutdown
+  bunny-system snapshot <create|list|restore|delete> [...]
+  bunny-system update
 EOF
   exit "${1:-2}"
 }
@@ -163,6 +171,27 @@ case "${1:-}" in
       set) [[ $# -eq 3 ]] || usage; power_profile_set "$3" ;;
       *) usage ;;
     esac
+    ;;
+  suspend)
+    [[ $# -eq 1 ]] || usage
+    exec "$COMMAND_DIR/bunny-cmd-suspend"
+    ;;
+  restart)
+    [[ $# -eq 1 ]] || usage
+    exec "$COMMAND_DIR/bunny-cmd-reboot"
+    ;;
+  shutdown)
+    [[ $# -eq 1 ]] || usage
+    exec "$COMMAND_DIR/bunny-cmd-shutdown"
+    ;;
+  snapshot)
+    [[ $# -ge 2 ]] || usage
+    shift
+    exec "$COMMAND_DIR/bunny-snapshot" "$@"
+    ;;
+  update)
+    [[ $# -eq 1 ]] || usage
+    exec "$COMMAND_DIR/bunny-update"
     ;;
   -h|--help) usage 0 ;;
   *) usage ;;
