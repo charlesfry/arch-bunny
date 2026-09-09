@@ -1,0 +1,169 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+usage() {
+  cat >&2 <<'EOF'
+Usage:
+  bunny-system status
+  bunny-system battery [status]
+  bunny-system battery limit <25-100>
+  bunny-system power-profile [status]
+  bunny-system power-profile set <balanced|performance|power-saver>
+EOF
+  exit "${1:-2}"
+}
+
+command_available() {
+  command -v "$1" >/dev/null 2>&1
+}
+
+require_sudo() {
+  sudo -v
+}
+
+battery_path() {
+  local path
+  for path in /sys/class/power_supply/BAT*; do
+    [[ -d $path ]] && printf '%s\n' "$path" && return 0
+  done
+  return 1
+}
+
+ac_power_state() {
+  local path found=0
+  for path in /sys/class/power_supply/*; do
+    [[ -f $path/type && $(<"$path/type") == Mains && -f $path/online ]] || continue
+    found=1
+    [[ $(<"$path/online") == 1 ]] && printf 'connected\n' && return
+  done
+
+  [[ $found -eq 1 ]] && printf 'disconnected\n' || printf 'unknown\n'
+}
+
+battery_status() {
+  local path limit capacity state ac_state description
+  if ! path=$(battery_path); then
+    printf 'Battery: unavailable\n'
+    return
+  fi
+
+  capacity=$(<"$path/capacity")
+  state=$(<"$path/status")
+  ac_state=$(ac_power_state)
+  case "$state:$ac_state" in
+    'Not charging:connected') description='on AC power; battery not charging' ;;
+    'Charging:'*) description='charging from AC power' ;;
+    'Full:connected') description='full; on AC power' ;;
+    'Discharging:'*) description='discharging on battery power' ;;
+    *) description=$(tr '[:upper:]' '[:lower:]' <<<"$state") ;;
+  esac
+  printf 'Battery: %s%% (%s)\n' "$capacity" "$description"
+  if command_available framework_tool; then
+    require_sudo
+    if limit=$(sudo framework_tool --charge-limit 2>&1) &&
+      [[ $limit =~ Minimum[[:space:]]+([0-9]+)%,[[:space:]]+Maximum[[:space:]]+([0-9]+)% ]]; then
+      printf 'Charge limit: %s%% (minimum %s%%)\n' \
+        "${BASH_REMATCH[2]}" "${BASH_REMATCH[1]}"
+    else
+      printf 'Charge limit: unavailable\n'
+    fi
+  else
+    printf 'Charge limit: framework_tool is not installed\n'
+  fi
+}
+
+battery_limit() {
+  local limit=${1:-}
+  [[ $limit =~ ^(2[5-9]|[3-9][0-9]|100)$ ]] || {
+    echo 'Charge limit must be a whole number from 25 to 100.' >&2
+    return 2
+  }
+  command_available framework_tool || {
+    echo 'framework_tool is not installed.' >&2
+    return 1
+  }
+
+  require_sudo
+  sudo framework_tool "--charge-limit=$limit"
+}
+
+power_profile_status() {
+  if ! command_available powerprofilesctl; then
+    printf 'Power profile: powerprofilesctl is not installed\n'
+    return
+  fi
+  printf 'Power profile: %s\n' "$(powerprofilesctl get)"
+}
+
+power_profile_set() {
+  local profile=${1:-}
+  case $profile in
+    balanced|performance|power-saver) ;;
+    *)
+      echo 'Power profile must be balanced, performance, or power-saver.' >&2
+      return 2
+      ;;
+  esac
+  command_available powerprofilesctl || {
+    echo 'powerprofilesctl is not installed.' >&2
+    return 1
+  }
+
+  powerprofilesctl set "$profile"
+}
+
+radio_status() {
+  local radio=$1 label=$2 state
+  if ! command_available rfkill; then
+    printf '%s: rfkill is not installed\n' "$label"
+    return
+  fi
+  state=$(rfkill list "$radio" 2>/dev/null | awk -F': ' '/Soft blocked:/ { print $2; exit }')
+  case $state in
+    yes) printf '%s: blocked\n' "$label" ;;
+    no) printf '%s: unblocked\n' "$label" ;;
+    *) printf '%s: unavailable\n' "$label" ;;
+  esac
+}
+
+firewall_status() {
+  local status
+  if ! command_available ufw; then
+    printf 'Firewall: ufw is not installed\n'
+  elif status=$(sudo -n ufw status 2>/dev/null); then
+    printf 'Firewall: %s\n' "$(awk '/^Status:/ { print $2; exit }' <<<"$status")"
+  else
+    printf 'Firewall: unavailable (sudo authentication required)\n'
+  fi
+}
+
+system_status() {
+  battery_status
+  power_profile_status
+  radio_status wifi 'Wi-Fi'
+  radio_status bluetooth 'Bluetooth'
+  firewall_status
+}
+
+case "${1:-}" in
+  status)
+    [[ $# -eq 1 ]] || usage
+    system_status
+    ;;
+  battery)
+    case "${2:-status}" in
+      status) [[ $# -le 2 ]] || usage; battery_status ;;
+      limit) [[ $# -eq 3 ]] || usage; battery_limit "$3" ;;
+      *) usage ;;
+    esac
+    ;;
+  power-profile)
+    case "${2:-status}" in
+      status) [[ $# -le 2 ]] || usage; power_profile_status ;;
+      set) [[ $# -eq 3 ]] || usage; power_profile_set "$3" ;;
+      *) usage ;;
+    esac
+    ;;
+  -h|--help) usage 0 ;;
+  *) usage ;;
+esac
