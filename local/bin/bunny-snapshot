@@ -1,41 +1,59 @@
 #!/bin/bash
 set -euo pipefail
 
-COMMAND="${1:-}"
+usage() {
+  cat >&2 <<'EOF'
+Usage:
+  bunny-snapshot create [description]      Snapshot every configured snapper config
+  bunny-snapshot restore                   Restore the booted snapshot (limine-snapper-restore)
+  bunny-snapshot delete <config> <number>  Delete one snapshot
 
-if [[ -z $COMMAND ]]; then
-  echo "Usage: bunny-snapshot <create|restore|delete>" >&2
+Run bunny-snapshot-list for config names and snapshot numbers.
+EOF
   exit 1
-fi
+}
 
-case "$COMMAND" in
+snapper_configs() {
+  sudo snapper --csvout list-configs | awk -F, 'NR>1 {print $1}'
+}
+
+case "${1:-}" in
 create)
-  DESC="$(date +'%m-%d-%Y')"
+  description=${2:-manual}
 
-  echo -e "\e[32mCreate system snapshot\e[0m"
-
-  # Get existing snapper config names from CSV output
-  mapfile -t CONFIGS < <(sudo snapper --csvout list-configs | awk -F, 'NR>1 {print $1}')
-
-  for config in "${CONFIGS[@]}"; do
-    sudo snapper -c "$config" create -c number # -d "$DESC"
+  printf '\e[32mCreate system snapshot\e[0m\n'
+  mapfile -t configs < <(snapper_configs)
+  for config in "${configs[@]}"; do
+    sudo snapper -c "$config" create -c number -d "$description"
   done
   echo
   ;;
 restore)
+  read -r -p "Restore the currently booted snapshot? [y/N] " answer
+  if [[ ! $answer =~ ^[Yy]$ ]]; then
+    echo "Restore cancelled."
+    exit 0
+  fi
   sudo limine-snapper-restore
   ;;
 delete)
-  echo -e "\e[32mDelete latest snapshot\e[0m"
+  config=${2:-}
+  number=${3:-}
 
-  mapfile -t CONFIGS < <(sudo snapper --csvout list-configs | awk -F, 'NR>1 {print $1}')
+  if [[ -z $config || ! $number =~ ^[1-9][0-9]*$ ]]; then
+    echo "A config name and snapshot number from 'bunny-snapshot-list' are required." >&2
+    usage
+  fi
+  if ! snapper_configs | grep -qx "$config"; then
+    echo "Unknown snapper config: $config" >&2
+    exit 1
+  fi
 
-  for config in "${CONFIGS[@]}"; do
-    latest="$(sudo snapper -c "$config" --csvout list | awk -F, 'NR>1 {id=$1} END {print id}')"
-    if [[ -n "$latest" && "$latest" != "0" ]]; then
-      sudo snapper -c "$config" delete "$latest"
-    fi
-  done
+  printf '\e[32mDelete %s snapshot %s\e[0m\n' "$config" "$number"
+  sudo snapper -c "$config" delete "$number"
   echo
+  ;;
+*)
+  usage
   ;;
 esac
