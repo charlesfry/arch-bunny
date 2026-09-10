@@ -1,10 +1,17 @@
 # local configurations
 *.local
-
+lazy-lock.json
+*.secret
+*.private
+*.gpg~
+*.git-credentials
+.stow-local-ignore
+!config/.stow-local-ignore
 .claude
 /tmp/*
 .envrc
 /TODO/
+local/src/
 
 # Scratch log dump at the repo root. Ignored on purpose, never committed. I am very mature.
 /poop
