@@ -6,7 +6,7 @@ Window.SetBackgroundTopColor(0.118, 0.133, 0.161);
 Window.SetBackgroundBottomColor(0.118, 0.133, 0.161);
 
 # Logo: Arch logo (#c5c8c6), centered at ~42% vertical, gentle pulse
-logo.image = Image("arch-logo.png");
+logo.image = Image("background.png");
 logo.sprite = Sprite(logo.image);
 logo.opacity_angle = 0;
 
