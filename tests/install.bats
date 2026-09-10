@@ -8,8 +8,8 @@ create_installer_fixture() {
   cp "$repo_root/install/lib/helpers.sh" "$fixture/install/lib/helpers.sh"
   for phase in \
     00-preflight.sh 10-packages.sh 11-nvidia.sh 12-greetd.sh \
-    13-bootloader.sh 20-dotfiles.sh 30-system-services.sh 40-user-setup.sh \
-    50-firewall.sh; do
+    13-bootloader.sh 20-dotfiles.sh 21-builds.sh 30-system-services.sh \
+    40-user-setup.sh 50-firewall.sh; do
     printf '#!/usr/bin/env bash\n' > "$fixture/install/$phase"
   done
 }
@@ -27,6 +27,9 @@ setup() {
   pacman_fragment=$repo_root/install/default/pacman/bunny-repositories.conf
   application_overrides=$repo_root/install/default/applications
   user_setup_script=$repo_root/install/40-user-setup.sh
+  build_phase_script=$repo_root/install/21-builds.sh
+  build_library=$repo_root/install/builds/lib.sh
+  indicator_build_definition=$repo_root/install/builds/niri-column-indicator.sh
   swayosd_style=$repo_root/config/swayosd/style.css
 }
 
@@ -646,6 +649,40 @@ EOF
     run grep -qx "$package" "$packages_file"
     [ "$status" -eq 0 ]
   done
+}
+
+@test "project builds are pinned and skip an installed revision" {
+  grep -Fq 'run_phase "21-builds.sh" "Project builds"' "$installer_script"
+  dotfiles_line=$(grep -nF 'run_phase "20-dotfiles.sh"' "$installer_script" | cut -d: -f1)
+  builds_line=$(grep -nF 'run_phase "21-builds.sh"' "$installer_script" | cut -d: -f1)
+  services_line=$(grep -nF 'run_phase "30-system-services.sh"' "$installer_script" | cut -d: -f1)
+  [ "$dotfiles_line" -lt "$builds_line" ]
+  [ "$builds_line" -lt "$services_line" ]
+
+  grep -Fxq 'BUILD_REVISION=12c0cce04abf3341bf8bf882297d2d786378ed34' \
+    "$indicator_build_definition"
+  grep -Fxq 'rust' "$packages_file"
+  grep -Fq 'cargo install --path . --locked --root "$HOME/.local" --force' "$build_library"
+
+  test_home=$BATS_TEST_TMPDIR/build-home
+  mock_bin=$BATS_TEST_TMPDIR/build-bin
+  mkdir -p "$test_home/.local/bin" "$test_home/.local/state/arch-bunny/builds" "$mock_bin"
+  printf '%s\n' 12c0cce04abf3341bf8bf882297d2d786378ed34 \
+    > "$test_home/.local/state/arch-bunny/builds/niri-column-indicator.revision"
+  touch "$test_home/.local/bin/niri-column-indicator"
+  chmod +x "$test_home/.local/bin/niri-column-indicator"
+  cat > "$mock_bin/git" <<'EOF'
+#!/usr/bin/env bash
+exit 99
+EOF
+  chmod +x "$mock_bin/git"
+
+  run env HOME="$test_home" PATH="$mock_bin:$PATH" \
+    BUNNY_INSTALL_LOG_FILE="$BATS_TEST_TMPDIR/build.log" bash -c \
+    'source "$1"; source "$2"; build_project "$3"' _ \
+    "$repo_root/install/lib/helpers.sh" "$build_library" "$indicator_build_definition"
+
+  [ "$status" -eq 0 ]
 }
 
 @test "successful installation offers an optional reboot" {
