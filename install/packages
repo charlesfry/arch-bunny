@@ -2,6 +2,7 @@ aws-cli
 base
 base-devel
 bat
+bats
 bemenu-wayland
 bitwarden
 bluetui
@@ -66,6 +67,7 @@ ripgrep
 rtkit
 rust
 satty
+shellcheck
 signal-desktop
 slurp
 snapper
