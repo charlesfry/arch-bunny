@@ -5,11 +5,11 @@ default-timeout=0
 anchor=top-right
 width=320
 
-# Styling — palette lifted from the Nidoran icons
+# Styling — neon blue/pink
 font=SpaceMono Nerd Font Mono, Symbols Nerd Font Mono, monospace 10
-background-color=#161320ff
-text-color=#f5f2ffff
-border-color=#9b9bf5ff
+background-color=#0d0e17ff
+text-color=#e8ecffff
+border-color=#4fd8ffff
 border-size=2
 border-radius=0
 padding=15
@@ -31,8 +31,8 @@ on-notify=none
 
 [urgency=critical]
 default-timeout=0
-text-color=#e69cd5ff
-border-color=#bd62c5ff
+text-color=#ff8de8ff
+border-color=#ff4fd8ff
 #layer=overlay
 on-notify=exec mpv --no-config --no-video --really-quiet "$HOME/.config/mako/sound-critical.mp3"
 
