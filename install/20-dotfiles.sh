@@ -41,6 +41,12 @@ mkdir -p "$HOME/.local"
 run_logged "Stowing local executables" \
   stow --no-folding -t "$HOME/.local" local
 
+# niri-window-position is compiled, not stowed.
+mkdir -p "$HOME/.local/bin"
+run_logged "Building niri-window-position" \
+  g++ -std=c++20 -O2 -o "$HOME/.local/bin/niri-window-position" \
+  local/src/niri-window-position.cpp
+
 # Machine-local shell settings, sourced at the end of ~/.bashrc
 if [[ -f "$HOME/.personal.bashrc" && ! -e "$HOME/.bashrc.local" ]]; then
   mv "$HOME/.personal.bashrc" "$HOME/.bashrc.local"
