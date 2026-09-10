@@ -15,12 +15,23 @@ cat >"$here/bin/bunny-notify" <<'EOF'
 args=(); while [[ $# -gt 0 ]]; do case "$1" in -i|-a) shift 2;; *) args+=("$1"); shift;; esac; done
 printf 'NOTIFY: %s | %s\n' "${args[0]}" "${args[1]:-}"
 EOF
+# FIRE=1 runs the scheduled command straight away, as its timer would at the
+# alarm time, with $HOME pointed here so it finds the stubbed bunny-notify.
 cat >"$here/bin/systemd-run" <<'EOF'
 #!/bin/bash
 for a; do [[ "$a" == --on-calendar=* ]] && at="${a#*=}"; done
-printf 'SCHEDULE: %s | %s\n' "${@: -2:1}" "$at"
+printf 'SCHEDULE: %s | %s\n' "${@: -4:1}" "$at"
+[[ -n "${FIRE-}" ]] || exit 0
+while [[ "$1" == --* ]]; do shift; done
+HOME="$(dirname "$0")/.." "$@"
 EOF
-chmod +x "$here/bin/bunny-notify" "$here/bin/systemd-run"
+cat >"$here/bin/systemctl" <<'EOF'
+#!/bin/bash
+printf 'STOP: %s\n' "${@: -1}"
+EOF
+chmod +x "$here/bin/bunny-notify" "$here/bin/systemd-run" "$here/bin/systemctl"
+mkdir -p "$here/.local/bin"
+ln -sf ../../bin/bunny-notify "$here/.local/bin/bunny-notify"
 
 now=$(date +%s)
 u() { date -u -d "@$1" +%Y%m%dT%H%M%SZ; }   # UTC form
@@ -304,16 +315,26 @@ else
 	pass=$((pass + 1)); printf '  ok   INTERVAL=0 leaves stderr clean\n'
 fi
 
-echo "== 17. alarms before the next daily run are scheduled, not fired early =="
+echo "== 17. upcoming alerts are scheduled, replaced by each fetch, and kept once fired =="
+later=$((now + 3 * 3600))
 run <<EOF
-$(ev later "Later Today" "DTSTART:$(u $((now + 3 * 3600)))"; end)
+$(ev later "Later Today" "DTSTART:$(u $later)"; end)
 $(ev farther "Day After" "DTSTART:$(u $((now + 2 * 86400)))"; end)
 EOF
-check "alarm later today scheduled at its alarm time" 1 "SCHEDULE: Later Today \| @$((now + 3 * 3600 - 600))$"
-check "alarm later today not notified yet" 0 'NOTIFY: Later Today'
-check "alarm past the next run left for that run" 0 'Day After'
+check "alert later today scheduled at its alarm time" 1 "SCHEDULE: Later Today \| @$((later - 600))$"
+check "alert later today not notified yet" 0 'NOTIFY: Later Today'
+check "alert past the next run left for that run" 0 'Day After'
+check "fetch clears the calendar's pending alerts" 1 '^STOP: bunny-calendar-alert-[0-9]+-\*\.timer$'
 "$script" >"$here/out" 2>>"$here/err"
-check "rerun does not schedule it twice" 0 'SCHEDULE: Later Today'
+check "rerun schedules the cleared alert again, once" 1 'SCHEDULE: Later Today'
+FIRE=1 "$script" >"$here/out" 2>>"$here/err"
+check "scheduled alert notifies when it fires" 1 'NOTIFY: Later Today'
+check_start "fired alert is recorded" "$later"
+"$script" >"$here/out" 2>>"$here/err"
+check "fired alert is not scheduled again" 0 'SCHEDULE: Later Today'
+printf '<html>captive portal</html>\r\n' >"$here/cal.ics"
+"$script" >"$here/out" 2>>"$here/err"
+check "non-calendar response leaves pending alerts alone" 0 '^STOP:'
 
 echo
 echo "passed=$pass failed=$fail"
