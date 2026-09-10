@@ -31,7 +31,8 @@ mkdir -p "$HOME/.config"
 for managed_config in \
   "$HOME/.config/mimeapps.list" \
   "$HOME/.config/gtk-3.0/settings.ini" \
-  "$HOME/.config/gtk-4.0/settings.ini"; do
+  "$HOME/.config/gtk-4.0/settings.ini" \
+  "$HOME/.config/btop/btop.conf"; do
   remove_regular_stow_conflict "$managed_config"
 done
 run_logged "Stowing application configuration" \
