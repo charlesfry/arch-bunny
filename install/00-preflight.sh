@@ -52,6 +52,14 @@ else
   return 1
 fi
 
+step "Checking running kernel modules"
+running_kernel=$(uname -r)
+if [[ ! -d /lib/modules/$running_kernel ]]; then
+  error "Kernel modules for the running kernel ($running_kernel) are unavailable; reboot, then rerun the installer"
+  return 1
+fi
+success "Kernel modules match running kernel: $running_kernel"
+
 step "Checking EFI boot mode"
 if [[ ! -d /sys/firmware/efi ]]; then
   error "EFI boot mode is required"
