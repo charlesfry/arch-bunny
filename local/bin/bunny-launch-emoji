@@ -6,4 +6,8 @@ SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 selection=$(fuzzel --dmenu --prompt="Emoji: " < "$SCRIPT_DIR/lib/emoji.txt")
 [[ -n "$selection" ]] || exit 0
 
-wtype "${selection%% *}"
+# Paste rather than wtype the raw codepoint: Electron apps (e.g. Signal)
+# don't reliably render emoji typed via wtype's synthetic key events, since
+# they're all outside the BMP.
+printf '%s' "${selection%% *}" | wl-copy
+wtype -M ctrl -k v -m ctrl
