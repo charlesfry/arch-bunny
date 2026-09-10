@@ -11,6 +11,7 @@ $git_state\
 $git_status\
 $cmd_duration\
 $line_break\
+$conda\
 $python\
 $character"""
 
@@ -20,8 +21,8 @@ truncation_length = 0
 truncate_to_repo = false
 
 [character]
-success_symbol = "[∷](bright-black)"
-error_symbol   = "[∷](red)"
+success_symbol = "[🥕](bright-black)"
+error_symbol   = "[χ](red)"
 vimcmd_symbol  = "[∷](green)"
 
 [fill]
@@ -38,13 +39,13 @@ format = " [$ahead_behind$stashed $all_status]($style) "
 style = "green"
 
 # Single-letter lowercase symbols for git status
-conflicted = "c"
-staged     = "s"
-modified   = "m"
+conflicted = "χ"
+staged     = "^"
+modified   = "*"
 untracked  = "u"
 renamed    = "r"
 deleted    = "d"
-stashed    = "p"
+stashed    = "s"
 ahead      = "↑"
 behind     = "↓"
 
@@ -55,6 +56,10 @@ style = "yellow"
 [cmd_duration]
 format = "[$duration]($style) "
 style = "yellow"
+
+[conda]
+format = "[$symbol$environment]($style) "
+style = "#a259ff"
 
 [python]
 format = "[$virtualenv]($style) "
