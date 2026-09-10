@@ -393,11 +393,12 @@ into mako:
 runs `bunny-battery-notify`: a warning at 20% and a critical one at 5%, while
 discharging only. No polling timer and no resident watcher; the event already fires.
 
-**Calendar.** `bunny-calendar-notify.timer` fetches Google Calendar once a day at 9AM
-and schedules a one-shot timer for each reminder due before the next fetch, firing at
-the event's own reminder time (10 minutes when the event sets none). Events added later
-in the day are picked up the next morning, or right away by running
-`bunny-calendar-notify`. It needs no API credentials or extra packages, just private iCal URLs.
+**Calendar.** `bunny-calendar-notify.timer` fetches Google Calendar at login and once a
+day at 8AM, and schedules a one-shot timer for each reminder due in the next 24 hours,
+firing at the event's own reminder time (10 minutes when the event sets none). Each
+fetch replaces that calendar's pending reminders, so a moved or cancelled event loses
+its old one; run `bunny-calendar-notify` to pick up changes made since the last fetch.
+It needs no API credentials or extra packages, just private iCal URLs.
 To set it up, put one "secret address in iCal format" URL per line in
 `~/.config/bunny/calendar-ics-url` (Google Calendar → Settings → pick a calendar →
 Integrate calendar), then:

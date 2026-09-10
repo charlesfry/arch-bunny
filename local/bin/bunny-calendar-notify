@@ -177,19 +177,22 @@ maybe_notify() {
 		unescape "$summary"
 		title="$unesc"
 
-		# Record only on success so a transient failure retries on the next run.
-		if ((alarm_epoch <= now)); then
-			bunny-notify -i "$calendar_icon" -a "Google Calendar" "$title" "$body" || continue
-		else
-			# ponytail: pending reminders are transient timers, so a reboot drops the
-			# rest of the day's until the next 9AM run.
+		if ((alarm_epoch > now)); then
+			# Recorded only once it fires: until then a rerun or reboot drops the
+			# timer and schedules it again.
 			systemd-run --user --quiet --collect \
 				--on-calendar="@$alarm_epoch" --timer-property=AccuracySec=1s \
-				--unit="bunny-calendar-$$-$RANDOM" \
-				"$HOME/.local/bin/bunny-notify" -i "$calendar_icon" -a "Google Calendar" "$title" "$body" || continue
+				--unit="bunny-calendar-alert-$cal_id-$$-$RANDOM" \
+				/bin/bash -c '"$HOME/.local/bin/bunny-notify" -i "$1" -a "Google Calendar" "$2" "$3" && printf "%s\t%(%s)T\n" "$4" -1 >>"$5"' \
+				_ "$calendar_icon" "$title" "$body" "$key" "$state_file" || true
+			continue
 		fi
-		printf '%s\t%s\n' "$key" "$now" >>"$state_file"
-		notified_keys["$key"]=1
+
+		# Record only on success so a transient notify failure retries next run.
+		if bunny-notify -i "$calendar_icon" -a "Google Calendar" "$title" "$body"; then
+			printf '%s\t%s\n' "$key" "$now" >>"$state_file"
+			notified_keys["$key"]=1
+		fi
 	done
 	return 0
 }
@@ -209,9 +212,16 @@ WEEKDAYS=MOTUWETHFRSASU
 
 process_calendar() {
 	local ics_url="$1"
-	local ics
-	ics=$(curl -fsS --max-time 10 "$ics_url") || return 0
-	[[ -n "$ics" ]] || return 0
+	local ics cal_id
+	# Retries ride out a network that isn't up yet when the login run fires.
+	ics=$(curl -fsS --max-time 10 --retry 5 --retry-delay 10 --retry-all-errors "$ics_url") || return 0
+	# A captive portal answers 200 with HTML; that must not wipe the pending alerts.
+	[[ "$ics" == *BEGIN:VCALENDAR* ]] || return 0
+
+	# Fresh data replaces this calendar's pending alerts, so a moved or cancelled
+	# event doesn't keep its old one.
+	read -r cal_id _ < <(cksum <<<"$ics_url")
+	systemctl --user stop "bunny-calendar-alert-$cal_id-*.timer" 2>/dev/null || true
 
 	local -A overridden # "UID|occurrence_epoch" -> 1, from RECURRENCE-ID overrides
 	local -a base_events single_events

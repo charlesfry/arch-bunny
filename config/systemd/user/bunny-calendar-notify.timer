@@ -1,9 +1,9 @@
 [Unit]
-Description=Fetch Google Calendar daily and schedule event reminders
+Description=Fetch Google Calendar at login and daily, and schedule event reminders
 
 [Timer]
-OnCalendar=*-*-* 09:00:00
-Persistent=true
+OnStartupSec=15s
+OnCalendar=*-*-* 08:00:00
 
 [Install]
 WantedBy=timers.target
