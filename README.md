@@ -242,6 +242,7 @@ itself; this table mirrors [`config/niri/bindings.kdl`](config/niri/bindings.kdl
 | `Mod+Shift+F` | Nautilus, new window |
 | `Mod+Shift+S` | System menu (sound, Wi-Fi, Bluetooth) |
 | `Mod+Ctrl+V` | Clipboard history (cliphist through fuzzel) |
+| `Mod+Shift+Period` | Emoji picker (`bunny-launch-emoji`, types the pick into the focused window) |
 | `Mod+Comma` | Dismiss the top notification |
 | `Mod+Shift+Comma` | Dismiss all notifications |
 | `Mod+Escape` | Lock the screen |
@@ -359,8 +360,8 @@ indicator for `bunny-toggle-idle`, the notification indicator for
 (gpu-screen-recorder, toggles), the volume module to mute/unmute, the network
 module for `bunny-launch-wifi`, and the battery module for `bunny-menu power`.
 
-The bar also carries a workspace-position dot strip
-(`niri-window-position`) and a weather module (see
+The bar also carries a column indicator strip
+(`niri-column-indicator`) and a weather module (see
 [Weather](#weather) below, which needs one command to set up).
 
 ## Commands

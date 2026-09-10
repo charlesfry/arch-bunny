@@ -21,7 +21,7 @@
     "niri/workspaces"
   ],
   "modules-right": [
-    "custom/niri-window-position",
+    "custom/niri-column-indicator",
     "tray",
     "pulseaudio",
     "network",

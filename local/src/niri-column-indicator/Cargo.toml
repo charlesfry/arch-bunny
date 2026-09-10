@@ -1,0 +1,11 @@
+[package]
+name = "niri-column-indicator"
+version = "0.1.0"
+edition = "2021"
+description = "Column indicator for niri's scrolling layout"
+license = "GPL-3.0-or-later"
+
+[dependencies]
+clap = { version = "4", features = ["derive"] }
+niri-ipc = "26.4"
+serde_json = "1"

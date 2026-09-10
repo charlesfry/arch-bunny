@@ -1,0 +1,9 @@
+#!/bin/bash
+# Pick an emoji by name in fuzzel and type it into the focused window. Bound
+# to Mod+Shift+Period, mirroring GTK's own Ctrl+. emoji picker.
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+
+selection=$(fuzzel --dmenu --prompt="Emoji: " < "$SCRIPT_DIR/lib/emoji.txt")
+[[ -n "$selection" ]] || exit 0
+
+wtype "${selection%% *}"

@@ -64,6 +64,7 @@ power-profiles-daemon
 python-gobject
 ripgrep
 rtkit
+rust
 satty
 signal-desktop
 slurp
