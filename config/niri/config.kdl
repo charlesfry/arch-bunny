@@ -115,7 +115,7 @@ layout {
   border {
     width 1
     inactive-color "#1b212a"
-    active-color "#5c6370"
+    active-color "#0a456e"
   }
 
   shadow {
