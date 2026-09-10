@@ -19,10 +19,10 @@ if [[ "$status" != "Discharging" ]]; then
   level=none
 elif (( capacity <= 5 )); then
   level=critical
-elif (( capacity <= 20 )); then
+elif (( capacity <= 10 )); then
   level=verylow
 elif ((capacity <= 40)); then
-  level=low
+  level=medium
 else
   level=none
 fi
@@ -50,9 +50,9 @@ case "$level" in
     as_user brightnessctl -s set 10% >/dev/null
     ;;
   verylow)
-    as_user "$notify" -u normal -a battery "Battery low" "${capacity}% remaining"
+    as_user "$notify" -u critical -a battery "Battery low" "${capacity}% remaining"
     ;;
-  low)
+  medium)
     as_user "$notify" -u normal -a battery "Charge battery" "${capacity}% remaining"
     ;;
   none)
