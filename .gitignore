@@ -5,7 +5,6 @@
 /tmp/*
 .envrc
 /TODO/
-/local/src/niri-column-indicator/target/
 
 # Scratch log dump at the repo root. Ignored on purpose, never committed. I am very mature.
 /poop

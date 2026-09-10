@@ -41,11 +41,6 @@ mkdir -p "$HOME/.local"
 run_logged "Stowing local executables" \
   stow --no-folding -t "$HOME/.local" local
 
-# niri-column-indicator is compiled, not stowed.
-mkdir -p "$HOME/.local/bin"
-run_logged "Building niri-column-indicator" \
-  cargo install --path local/src/niri-column-indicator --locked --root "$HOME/.local"
-
 # Machine-local shell settings, sourced at the end of ~/.bashrc
 if [[ -f "$HOME/.personal.bashrc" && ! -e "$HOME/.bashrc.local" ]]; then
   mv "$HOME/.personal.bashrc" "$HOME/.bashrc.local"
