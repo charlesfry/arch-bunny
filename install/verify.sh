@@ -378,7 +378,7 @@ main() {
   check_command "desktop defaults are stowed from tracked configuration" \
     desktop_defaults_are_stowed
 
-  for service in waybar.service mako.service swaybg.service swayidle.service swayosd.service; do
+  for service in waybar.service mako.service swaybg.service swayidle.service; do
     check_enabled_user_service "$service"
   done
   check_command "default user directories use the expected names" \

@@ -77,7 +77,7 @@
       "headset": "󰋎"
     },
     "tooltip-format": "{desc} · {volume}%",
-    "on-click": "swayosd-client --output-volume mute-toggle"
+    "on-click": "bunny-osd volume mute"
   },
   "network": {
     "interval": 5,

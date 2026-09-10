@@ -53,14 +53,14 @@ binds {
     // Note: the entire command goes as a single argument. It's passed verbatim to `sh -c`.
     // For example, this is a standard bind to toggle the screen reader (orca).
 
-    // Volume keys go through swayosd-client: it applies the change *and* shows the OSD.
-    // The 100% cap and the percentage readout come from config/swayosd/config.toml.
+    // Volume keys go through bunny-osd: it applies the change *and* shows the level in mako.
+    // The 100% cap lives in bunny-osd.
     // The allow-when-locked=true property makes them work even when the session is locked.
-    // +10/-10 is the step size -- the one number to change if it feels coarse.
-    XF86AudioRaiseVolume allow-when-locked=true { spawn-sh "swayosd-client --output-volume +10"; }
-    XF86AudioLowerVolume allow-when-locked=true { spawn-sh "swayosd-client --output-volume -10"; }
-    XF86AudioMute        allow-when-locked=true { spawn-sh "swayosd-client --output-volume mute-toggle"; }
-    XF86AudioMicMute     allow-when-locked=true { spawn-sh "swayosd-client --input-volume mute-toggle"; }
+    // 10% is the step size -- the one number to change if it feels coarse.
+    XF86AudioRaiseVolume allow-when-locked=true { spawn "bunny-osd" "volume" "10%+"; }
+    XF86AudioLowerVolume allow-when-locked=true { spawn "bunny-osd" "volume" "10%-"; }
+    XF86AudioMute        allow-when-locked=true { spawn "bunny-osd" "volume" "mute"; }
+    XF86AudioMicMute     allow-when-locked=true { spawn "bunny-osd" "mic" "mute"; }
 
     // Example media keys mapping using playerctl.
     // This will work with any MPRIS-enabled media player.
@@ -69,11 +69,11 @@ binds {
     XF86AudioPrev        allow-when-locked=true { spawn-sh "playerctl previous"; }
     XF86AudioNext        allow-when-locked=true { spawn-sh "playerctl next"; }
 
-    // Example brightness key mappings for brightnessctl.
+    // Brightness keys go through bunny-osd too, for the same level popup.
     // You can use regular spawn with multiple arguments too (to avoid going through "sh"),
     // but you need to manually put each argument in separate "" quotes.
-    XF86MonBrightnessUp allow-when-locked=true { spawn "brightnessctl" "--class=backlight" "set" "+10%"; }
-    XF86MonBrightnessDown allow-when-locked=true { spawn "brightnessctl" "--class=backlight" "set" "10%-"; }
+    XF86MonBrightnessUp   allow-when-locked=true { spawn "bunny-osd" "brightness" "+10%"; }
+    XF86MonBrightnessDown allow-when-locked=true { spawn "bunny-osd" "brightness" "10%-"; }
 
     // Open/close the Overview: a zoomed-out view of workspaces and windows.
     // You can also move the mouse into the top-left hot corner,

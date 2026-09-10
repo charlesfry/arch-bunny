@@ -45,3 +45,21 @@ on-notify=none
 invisible=1
 on-notify=none
 
+# bunny-osd: volume and brightness levels, replaced in place rather than stacked
+[app-name=bunny-osd]
+anchor=bottom-center
+layer=overlay
+width=220
+outer-margin=0,0,80
+padding=8
+default-timeout=1000
+history=0
+format=%s
+text-alignment=center
+progress-color=over #4fd8ff66
+on-notify=none
+
+# A level is feedback for a key just pressed, so DND doesn't hide it
+[mode=dnd app-name=bunny-osd]
+invisible=0
+

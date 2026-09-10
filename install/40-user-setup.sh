@@ -13,8 +13,7 @@ enable_user_services \
   waybar \
   mako \
   swaybg \
-  swayidle \
-  swayosd
+  swayidle
 
 step "Configuring GTK appearance"
 gsettings set org.gnome.desktop.interface color-scheme prefer-dark

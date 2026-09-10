@@ -1,0 +1,38 @@
+#!/bin/bash
+# Apply a volume, mic, or brightness change, then show the new level as a mako
+# progress popup that replaces the last one instead of stacking.
+set -euo pipefail
+
+case "${1-}" in
+volume | mic)
+  dev=@DEFAULT_AUDIO_SINK@ icons=(󰕿 󰖀 󰕾) muted_icon=󰝟
+  [[ "$1" == mic ]] && dev=@DEFAULT_AUDIO_SOURCE@ icons=(󰍬) muted_icon=󰍭
+  if [[ "${2-}" == mute ]]; then
+    wpctl set-mute "$dev" toggle
+  else
+    wpctl set-volume -l 1.0 "$dev" "${2:?step required, e.g. 10%+}"
+  fi
+  # "Volume: 0.27", with " [MUTED]" appended while muted
+  read -r _ level muted < <(wpctl get-volume "$dev")
+  level=$((10#${level/./}))
+  ;;
+brightness)
+  # -m prints the new state as device,class,current,percent,max
+  IFS=, read -r _ _ _ level _ < <(brightnessctl --class=backlight -m set "${2:?step required, e.g. +10%}")
+  level=${level%\%} icons=(󰃞 󰃟 󰃠) muted=
+  ;;
+*)
+  echo "usage: $(basename "$0") volume <10%+|10%-|mute> | mic mute | brightness <+10%|10%->" >&2
+  exit 1
+  ;;
+esac
+
+icon=${icons[level >= 100 ? -1 : level * ${#icons[@]} / 100]}
+[[ -n "$muted" ]] && icon=$muted_icon
+
+# Passing the last popup's id replaces it in place; one that already closed
+# just means a new popup.
+id_file="${XDG_RUNTIME_DIR:-/tmp}/bunny-osd.id"
+read -r id 2>/dev/null <"$id_file" || id=0
+id=$(notify-send -p -r "$id" -a bunny-osd -h "int:value:$level" "$icon  $level%")
+printf '%s\n' "$id" >"$id_file"

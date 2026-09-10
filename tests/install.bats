@@ -779,8 +779,3 @@ EOF
   grep -Fq 'if ((BUNNY_AUTO_REBOOT)); then' "$installer_script"
   grep -Fq 'reboot_answer=y' "$installer_script"
 }
-
-@test "SwayOSD CSS declarations contain separators" {
-  run grep -nE '^ *[a-zA-Z-]+ +[^:;]+;' "$swayosd_style"
-  [ "$status" -eq 1 ]
-}

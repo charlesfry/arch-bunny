@@ -331,17 +331,18 @@ itself; this table mirrors [`config/niri/bindings.kdl`](config/niri/bindings.kdl
 | `XF86AudioStop` | Stop |
 | `XF86AudioPrev` / `XF86AudioNext` | Previous/next track |
 
-All of these keep working while the session is locked. The volume and mute keys go through
-[swayosd](https://github.com/ErikReider/SwayOSD), which applies the change and draws the
-overlay; the step size and the 100% cap live in `config/niri/bindings.kdl` and
-`config/swayosd/config.toml` respectively.
+All of these keep working while the session is locked. The volume and mute keys, and the
+brightness keys below, go through `bunny-osd`, which applies the change and shows the new
+level as a mako progress popup that replaces the previous one instead of stacking, with no
+OSD daemon of its own; the step size lives in `config/niri/bindings.kdl` and the 100% cap
+in `bunny-osd`. The popup doesn't draw over the lock screen.
 
 ### Brightness
 
 | Shortcut | Action |
 |---|---|
-| `XF86MonBrightnessUp` | Brightness +10% |
-| `XF86MonBrightnessDown` | Brightness −10% |
+| `XF86MonBrightnessUp` | Brightness +10%, with an on-screen level popup |
+| `XF86MonBrightnessDown` | Brightness −10%, with an on-screen level popup |
 
 ### Session
 
@@ -524,7 +525,7 @@ reports which of these dependencies are present.
 | **Lock screen** | [hyprlock](https://github.com/hyprwm/hyprlock) |
 | **Wallpaper** | [swaybg](https://github.com/swaywm/swaybg) |
 | **Idle management** | [swayidle](https://github.com/swaywm/swayidle) |
-| **OSD overlays** | [swayosd](https://github.com/ErikReider/SwayOSD) |
+| **OSD overlays** | mako, via `bunny-osd` |
 | **Boot splash** | [plymouth](https://gitlab.freedesktop.org/plymouth/plymouth), with the `bunny` theme from `install/default/plymouth/` |
 | **Clipboard** | wl-clipboard |
 | **Screenshots** | [grim](https://sr.ht/~emersion/grim/) + [slurp](https://github.com/emersion/slurp) |
