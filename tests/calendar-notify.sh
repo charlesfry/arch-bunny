@@ -15,7 +15,12 @@ cat >"$here/bin/bunny-notify" <<'EOF'
 args=(); while [[ $# -gt 0 ]]; do case "$1" in -i|-a) shift 2;; *) args+=("$1"); shift;; esac; done
 printf 'NOTIFY: %s | %s\n' "${args[0]}" "${args[1]:-}"
 EOF
-chmod +x "$here/bin/bunny-notify"
+cat >"$here/bin/systemd-run" <<'EOF'
+#!/bin/bash
+for a; do [[ "$a" == --on-calendar=* ]] && at="${a#*=}"; done
+printf 'SCHEDULE: %s | %s\n' "${@: -2:1}" "$at"
+EOF
+chmod +x "$here/bin/bunny-notify" "$here/bin/systemd-run"
 
 now=$(date +%s)
 u() { date -u -d "@$1" +%Y%m%dT%H%M%SZ; }   # UTC form
@@ -298,6 +303,17 @@ if grep -q 'division by 0' "$here/err"; then
 else
 	pass=$((pass + 1)); printf '  ok   INTERVAL=0 leaves stderr clean\n'
 fi
+
+echo "== 17. alarms before the next daily run are scheduled, not fired early =="
+run <<EOF
+$(ev later "Later Today" "DTSTART:$(u $((now + 3 * 3600)))"; end)
+$(ev farther "Day After" "DTSTART:$(u $((now + 2 * 86400)))"; end)
+EOF
+check "alarm later today scheduled at its alarm time" 1 "SCHEDULE: Later Today \| @$((now + 3 * 3600 - 600))$"
+check "alarm later today not notified yet" 0 'NOTIFY: Later Today'
+check "alarm past the next run left for that run" 0 'Day After'
+"$script" >"$here/out" 2>>"$here/err"
+check "rerun does not schedule it twice" 0 'SCHEDULE: Later Today'
 
 echo
 echo "passed=$pass failed=$fail"
