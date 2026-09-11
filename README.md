@@ -16,17 +16,17 @@ distraction to break your flow, so Bunny brings what you need about as quickly a
 
 ## What this Arch setup is capable of out-of-the-box
 
-- A blazing-fast terminal
-- A vim-keybound compositor
+- Blazing-fast terminal
+- Vim-keybound compositor
 - LazyVim with handcrafted bindings, and a real notebook stack: Molten runs Jupyter
   kernels inside Neovim, with plots and typeset LaTeX drawn inline in the terminal,
   and `.ipynb` files open as markdown so the same keys work in notebooks and `.md`
-- docker and docker-compose
-- extremely well-scoped snapshots for reliable rollback on minimally-sized snapshots
+- Docker and docker-compose
+- Extremely well-scoped snapshots for reliable rollback on minimally-sized snapshots
 - LUKS full-disk encryption, and a scripted factory reset back to the
   finished-install snapshot
-- screenshots with annotation and a colour picker on keybinds, screen recording from the bar
-- battery and Google Calendar notifications with no resident daemon and no API keys
+- Screenshots with annotation and a colour picker on keybinds, screen recording from the bar
+- Battery and Google Calendar notifications with no resident daemon and no API keys
 - ufw, with ufw-docker closing Docker's iptables bypass
 - Nice-to-haves that cost nothing until you reach for them: the Docker daemon is
   socket-activated rather than running at boot, `conda` is a shell stub that loads
@@ -34,9 +34,9 @@ distraction to break your flow, so Bunny brings what you need about as quickly a
   a tray daemon between them
 - `bunny-dev` to install or remove the Pi coding agent, direnv wired into the shell,
   and tmux-sessionizer to fzf into any project as its own session
-- a weather service that unintrusively lets you know about bad upcoming weather
-- (Framework 13, AMD Ryzen AI 300 Series) a kernel-level fix for the integrated microphone
-- a post-boot idle that's less than 1GiB of RAM
+- Weather service that unintrusively lets you know about upcoming storms and snow
+- Framework 13 support: microphone fix and battery charge cap out of the box, see [Framework 13](#framework-13)
+- Post-boot idle that's less than 1GiB of RAM
 - This setup *flies* on my Framework 13 and can make a 10 year old Thinkpad feel brand new
 
 <img src="assets/pictures/idleRamScreenshot.png" width="320" alt="Idle RAM usage of this setup is measured in Megabytes: 1020 MiB of 14.9 GiB">
@@ -64,11 +64,14 @@ Windows recommends a minimum of 8GiB of RAM. Macs start at 16. Bunny idles in Me
 ## Motivation
 
 I wanted an Arch setup that was fast and light enough to keep me in a flow state
-and immediately usable for data science work. Bunny is what I always found myself rebuilding by hand.
-The install is scripted end to end, so the next machine costs an hour instead of a weekend. LUKS and snapshots are there from the first boot, which makes backing up your configuration easy and un-breaking things cheap (a must-have for a tinkerer like me). And the Python and Jupyter Notebook integration is set up on the assumption that it is the reason the machine exists, not an afterthought bolted on once the desktop was pretty.
+and immediately usable for data science work. Bunny installs and sets up an environment
+with carefully selected features that are designed to do everything you need with
+virtually zero wait time so you're never distracted.
+LUKS and snapshots are there from the first boot, which makes backing up your configuration easy and un-breaking things cheap (a must-have for a tinkerer). And the Python and Jupyter Notebook integration is set up on the assumption that it is the reason the machine exists, not an afterthought bolted on once the desktop was pretty.
 
-Also, I love bunnies. Fast, light, and quiet.
-🐰 is the archetype of software written for those who want a machine that prioritizes performance over flashy, bloated nice-to-haves.
+Also, I love bunnies. Fast, light, and quiet,
+🐰 is the archetype of software written for those who want a machine that prioritizes performance over flashy and bloated features made by people who focus too much on
+new, advertising-flashy features and not enough on what is actually useful for you.
 
 ## Installation
 
@@ -102,8 +105,7 @@ Boot from an arch iso and run `archinstall`
    Archinstall enables iwd only when you connected with `iwctl` in the live
    environment, so if you install over ethernet, Wi-Fi stays down until
    `30-system-services.sh` runs.
-7. **Additional packages** → add `pipewire` and `git`
-8. **Timezone** → select your preferred region
+7. **Timezone** → select your preferred region
 
 After archinstall finishes and the system reboots, log in and continue below.
 
@@ -432,6 +434,37 @@ bunny-update-location --add "Pittsburgh,PA,15213" # zip codes, states, cities al
 
 On an unmapped SSID the module shows a hint to run that; with no network at all it
 shows nothing.
+
+## Framework 13
+
+Hardware-specific fixes and defaults, gated to Framework hardware at install time
+and inert on anything else.
+
+### Battery charge limit
+
+A `framework-charge-limit` systemd service caps charging at 80% on every boot, via
+`framework_tool --charge-limit`. Li-ion cells degrade faster the longer they sit
+near full charge, so capping below 100% trades a bit of daily range for a battery
+that still holds a real charge in a few years. The EC's own limiter overrides the
+kernel's generic threshold on this hardware, so `framework_tool` is required
+rather than the usual `charge_control_end_threshold`.
+
+- For this boot only: `bunny-system battery limit <25-100>`
+- To change the default permanently: edit `CHARGE_LIMIT` in
+  `/etc/default/framework-charge-limit`, then
+  `sudo systemctl restart framework-charge-limit`
+
+### Microphone fix (AMD Ryzen AI 300 Series)
+
+This model exposes a second, unwired "ACP" microphone device alongside the real
+one. Its presence confuses ALSA's Capture Source mux into reverting to that dead
+capture path, which silently kills the internal mic system-wide (calls,
+recordings, everything) even though PipeWire routing still looks correct.
+Installation blacklists the phantom device from the kernel command line
+(`module_blacklist=snd_acp70,snd_acp_pci`, added in `install/13-bootloader.sh`
+when the DMI product name matches), so the mux never has a broken option to fall
+back to. No userspace workaround needed once that's in place.
+Upstream: https://github.com/FrameworkComputer/SoftwareFirmwareIssueTracker/issues/166
 
 ## Shell
 
