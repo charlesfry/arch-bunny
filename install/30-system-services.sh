@@ -101,6 +101,12 @@ fi
 sudo mkdir -p "/etc/systemd/system.conf.d"
 sudo cp "$BUNNY_INSTALL_DEFAULTS_PATH/systemd/faster-shutdown.conf" /etc/systemd/system.conf.d/10-faster-shutdown.conf
 
+# Let niri's switch-events lid-close handler (bunny-cmd-suspend) own the lid
+# switch instead of logind, so the screen is locked before the system
+# suspends rather than racing logind's own immediate suspend.
+sudo mkdir -p "/etc/systemd/logind.conf.d"
+sudo cp "$BUNNY_INSTALL_DEFAULTS_PATH/systemd/no-logind-lid.conf" /etc/systemd/logind.conf.d/10-no-logind-lid.conf
+
 # Prevent touchpad input from waking the system.
 if [[ -e /sys/bus/i2c/devices/i2c-PIXA3854:00 ]]; then
   sudo mkdir -p /etc/udev/rules.d
