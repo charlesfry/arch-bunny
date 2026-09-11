@@ -63,14 +63,12 @@ Windows recommends a minimum of 8GiB of RAM. Macs start at 16. Bunny idles in Me
 
 ## Motivation
 
-I wanted an Arch setup that was fast and light enough to keep me in a flow state,
-and immediately usable for the work I actually do. The minimal builds expected a weekend of plumbing before I could open a notebook. The batteries-included ones shipped a pile of daemons I never asked for, IDEs that ate a third of my RAM, animations that turned a fast machine slow, and snapshot configurations where a handfull of docker containers could turn three snapshots into a three hundred Gigabyte hard drive monstrosity.
-
-Bunny is what I always found myself rebuilding by hand.
-The install is scripted end to end, so the next machine costs an hour instead of a weekend. LUKS and snapshots are there from the first boot, which makes backing up your configuration easy and un-breaking things cheap. And the Python and Jupyter Notebook integration is set up on the assumption that it is the reason the machine exists, not an afterthought bolted on once the desktop was pretty.
+I wanted an Arch setup that was fast and light enough to keep me in a flow state
+and immediately usable for data science work. Bunny is what I always found myself rebuilding by hand.
+The install is scripted end to end, so the next machine costs an hour instead of a weekend. LUKS and snapshots are there from the first boot, which makes backing up your configuration easy and un-breaking things cheap (a must-have for a tinkerer like me). And the Python and Jupyter Notebook integration is set up on the assumption that it is the reason the machine exists, not an afterthought bolted on once the desktop was pretty.
 
 Also, I love bunnies. Fast, light, and quiet.
-:rabbit: is the archetype of software written for those who want elegant, pure productivity.
+🐰 is the archetype of software written for those who want a machine that prioritizes performance over flashy, bloated nice-to-haves.
 
 ## Installation
 
@@ -168,7 +166,7 @@ sudo pacman -S --needed curl && bash <(curl -fsSL https://raw.githubusercontent.
 
 The install script, **install.sh**, is *Idempotent*, meaning you can rerun it at any point if you want to download the latest version of this repo and get the newest changes without overwriting your current settings.
 
-#### Optional extras
+#### Optional extras (EXPERIMENTAL and barely tested add-ons that are unnecessary for the machine's intended workflow)
 
 `install/packages` is what every machine gets. `install/packages-extra` (official repos)
 and `install/packages-extra-yay` (AUR) hold packages that are *offered*, not assumed.
