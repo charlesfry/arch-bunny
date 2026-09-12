@@ -248,7 +248,7 @@ for required_command in cryptsetup plymouth btrfs; do
 done
 
 if [[ -f /etc/mkinitcpio.conf.d/nvidia.conf ]]; then
-  for required_module in nvidia nvidia_modeset nvidia_uvm nvidia_drm; do
+  for required_module in nvidia nvidia-modeset nvidia-uvm nvidia-drm; do
     if ! grep -Eq "(^|/)${required_module}(\\.ko(\\.[a-z0-9]+)?)?$" <<< "$initramfs_listing"; then
       restore_last_known_limine_configuration
       error "Final UKI does not contain NVIDIA module: $required_module; restored the last known-working configuration"
