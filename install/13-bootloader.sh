@@ -162,12 +162,11 @@ else
   success "Enabled btrfs quota"
 fi
 
-# Tweak default Snapper configs
-sudo sed -i 's/^TIMELINE_CREATE="yes"/TIMELINE_CREATE="no"/' /etc/snapper/configs/{root,home}
-sudo sed -i 's/^NUMBER_LIMIT="50"/NUMBER_LIMIT="5"/' /etc/snapper/configs/{root,home}
-sudo sed -i 's/^NUMBER_LIMIT_IMPORTANT="10"/NUMBER_LIMIT_IMPORTANT="5"/' /etc/snapper/configs/{root,home}
-sudo sed -i 's/^SPACE_LIMIT="0.5"/SPACE_LIMIT="0.3"/' /etc/snapper/configs/{root,home}
-sudo sed -i 's/^FREE_LIMIT="0.2"/FREE_LIMIT="0.3"/' /etc/snapper/configs/{root,home}
+# Snapper configs
+step "Installing Snapper configs"
+for snapper_config in root home; do
+  sudo install -m 640 "$BUNNY_INSTALL_DEFAULTS_PATH/snapper/$snapper_config" "/etc/snapper/configs/$snapper_config"
+done
 
 # Blacklist hardware watchdog modules (desktop, not needed)
 step "Blacklisting hardware watchdog modules"

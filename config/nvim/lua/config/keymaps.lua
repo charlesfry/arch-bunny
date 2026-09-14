@@ -26,12 +26,12 @@ vim.keymap.set("n", "<C-a>", "gg<S-v>G", { desc = "Select all" })
 -- Misc
 -- <leader>ts is used by onedark to toggle the theme
 vim.keymap.set("n", "<leader>dl", "d$")
-vim.keymap.set("n", "<C-h>", function()
+vim.keymap.set("n", "<leader>h", function()
   -- nav_hunk is async, so center in its callback once the cursor has moved
   require("gitsigns").nav_hunk("next", nil, function() vim.cmd("normal! zz") end)
 end, { desc = "Next hunk (centered)" })
 
-vim.keymap.set("n", "<C-A-h>", function()
+vim.keymap.set("n", "<leader>H", function()
   -- nav_hunk is async, so center in its callback once the cursor has moved
   require("gitsigns").nav_hunk("prev", nil, function() vim.cmd("normal! zz") end)
 end, { desc = "Previous hunk (centered)" })
