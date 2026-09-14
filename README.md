@@ -1,11 +1,5 @@
 # :rabbit: Bunny for Arch :rabbit:
 
----
-
-#### Huge thanks to viacoffee, whose [dotfiles repo](https://github.com/viacoffee/dotfiles) is borrowed extensively for the install plumbing.
-
----
-
 ## What this repo is
 
 **Bunny** is an opinionated Arch Linux setup optimized for a data science workflow.
@@ -581,3 +575,10 @@ reports which of these dependencies are present.
 | **Multiplexer** | [tmux](https://github.com/tmux/tmux) |
 | **CLI tools** | [bat](https://github.com/sharkdp/bat) · [fd](https://github.com/sharkdp/fd) · [fzf](https://github.com/junegunn/fzf) · [ripgrep](https://github.com/BurntSushi/ripgrep) · [jq](https://jqlang.github.io/jq/) · [gh](https://cli.github.com/) · [fastfetch](https://github.com/fastfetch-cli/fastfetch) |
 | **Dotfiles management** | [GNU stow](https://www.gnu.org/software/stow/), with `--no-folding` for `config`/`local` so only leaf files are symlinked |
+
+
+---
+
+#### Huge thanks to viacoffee, whose [dotfiles repo](https://github.com/viacoffee/dotfiles) is borrowed extensively for the install plumbing.
+
+---
