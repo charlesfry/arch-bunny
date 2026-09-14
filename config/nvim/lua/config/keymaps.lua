@@ -26,7 +26,10 @@ vim.keymap.set("n", "<C-a>", "gg<S-v>G", { desc = "Select all" })
 -- Misc
 -- <leader>ts is used by onedark to toggle the theme
 vim.keymap.set("n", "<leader>dl", "d$")
-vim.keymap.set("n", "<C-h>", function() require("gitsigns").nav_hunk("next") end, { desc = "Next hunk" })
+vim.keymap.set("n", "<C-h>", function()
+  -- nav_hunk is async, so center in its callback once the cursor has moved
+  require("gitsigns").nav_hunk("next", nil, function() vim.cmd("normal! zz") end)
+end, { desc = "Next hunk (centered)" })
 
 -- Trim trailing whitespace across the whole buffer, preserving cursor/view and
 -- the search history (keeppatterns). Exposed as both a keymap and :Trim.
