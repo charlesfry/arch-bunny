@@ -31,6 +31,11 @@ vim.keymap.set("n", "<C-h>", function()
   require("gitsigns").nav_hunk("next", nil, function() vim.cmd("normal! zz") end)
 end, { desc = "Next hunk (centered)" })
 
+vim.keymap.set("n", "<C-A-h>", function()
+  -- nav_hunk is async, so center in its callback once the cursor has moved
+  require("gitsigns").nav_hunk("prev", nil, function() vim.cmd("normal! zz") end)
+end, { desc = "Previous hunk (centered)" })
+
 -- Trim trailing whitespace across the whole buffer, preserving cursor/view and
 -- the search history (keeppatterns). Exposed as both a keymap and :Trim.
 local function trim_trailing_whitespace()
