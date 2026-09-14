@@ -22,8 +22,8 @@
 #     "Some_Cafe_SSID": "Boston"
 #   }
 #
-# Meant to run on a short-interval systemd --user timer; each invocation
-# is a single cheap D-Bus read, so it's safe to run often.
+# Runs on an hourly systemd --user timer; run it by hand after switching
+# networks to pick up the new location right away.
 set -Eeuo pipefail
 
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
