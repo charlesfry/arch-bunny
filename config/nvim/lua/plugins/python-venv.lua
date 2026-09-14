@@ -19,6 +19,10 @@ return {
         home_venv = {
           command = "$FD 'bin/python$' ~/.venvs --no-ignore-vcs --full-path --color never"
         },
+        conda_envs = {
+          command = "$FD 'bin/python$' ~/.conda/envs --no-ignore-vcs --full-path --color never",
+          type = "anaconda",
+        },
       },
     },
   },
