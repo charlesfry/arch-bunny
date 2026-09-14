@@ -63,9 +63,8 @@ with carefully selected features that are designed to do everything you need wit
 virtually zero wait time so you're never distracted.
 LUKS and snapshots are there from the first boot, which makes backing up your configuration easy and un-breaking things cheap (a must-have for a tinkerer). And the Python and Jupyter Notebook integration is set up on the assumption that it is the reason the machine exists, not an afterthought bolted on once the desktop was pretty.
 
-Also, I love bunnies. Fast, light, and quiet,
-🐰 is the archetype of software written for those who want a machine that prioritizes performance over flashy and bloated features made by people who focus too much on
-new, advertising-flashy features and not enough on what is actually useful for you.
+I chose the name Bunny because they are small, fast and lean.
+🐰 is the archetype of software written for those who prefer responsive performance over impractical flair.
 
 ## Installation
 
@@ -99,7 +98,8 @@ Boot from an arch iso and run `archinstall`
    Archinstall enables iwd only when you connected with `iwctl` in the live
    environment, so if you install over ethernet, Wi-Fi stays down until
    `30-system-services.sh` runs.
-7. **Timezone** → select your preferred region
+7. **User Account** Add a root login and user account, and give the user sudo privileges.
+8. **Timezone** → select your preferred region.
 
 After archinstall finishes and the system reboots, log in and continue below.
 
