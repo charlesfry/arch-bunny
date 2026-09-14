@@ -1,0 +1,24 @@
+#!/bin/bash
+# Lists available audio output devices (sinks) in a dropdown and switches the
+# default sink to whichever one is picked.
+set -euo pipefail
+
+declare -A id_for_label
+labels=()
+
+while IFS= read -r line; do
+  [[ $line =~ ([0-9]+)\.\ +(.*[^\ ])\ +\[vol: ]] || continue
+  id=${BASH_REMATCH[1]}
+  label=${BASH_REMATCH[2]}
+  [[ $line == *'*'* ]] && label+=" (current)"
+  labels+=("$label")
+  id_for_label["$label"]=$id
+done < <(wpctl status | sed -n '/Sinks:/,/Sources:/p')
+
+(( ${#labels[@]} )) || { bunny-notify -u critical "Audio output" "No audio outputs found"; exit 1; }
+
+choice=$(bunny-launch-menu "Audio output" < <(printf '%s\n' "${labels[@]}"))
+[[ -n "$choice" ]] || exit 0
+
+wpctl set-default "${id_for_label[$choice]}"
+bunny-notify "Audio output" "Switched to ${choice% (current)}"

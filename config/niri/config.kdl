@@ -72,26 +72,29 @@ output "eDP-1" {
   }
 }
 
+// Left-to-right desk order: DP-2, DP-1, HDMI-A-1.
+output "DP-2" {
+  position x=0 y=0
+}
+
+output "DP-1" {
+  position x=2560 y=0
+}
+
 output "HDMI-A-1" {
-  mode "3440x1440@59.973"
+  mode "1920x1080@60.000"
   scale 1
   focus-at-startup
+  position x=5120 y=0
 
   hot-corners {
     off
   }
 
   layout {
-    default-column-width { proportion 0.33333; }
+    default-column-width { proportion 0.5; }
 
     preset-column-widths {
-      proportion 0.33333
-      proportion 0.5
-      proportion 0.66667
-    }
-
-    preset-window-heights {
-      proportion 0.33333
       proportion 0.5
       proportion 0.66667
     }
