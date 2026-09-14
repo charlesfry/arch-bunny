@@ -31,7 +31,9 @@ on-notify=none
 
 # Browsers put the site's domain on the body's first line
 [body~=^app.slack.com]
-on-notify=exec mpv --no-config --no-video --really-quiet "$HOME/.config/mako/sound-slack.mp3"
+text-color=#ffffffff
+border-color=#ffffffff
+on-notify=exec mpv --no-config --no-video --really-quiet --volume=130 "$HOME/.config/mako/sound-slack.mp3"
 
 [urgency=critical]
 default-timeout=0
