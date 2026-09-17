@@ -23,8 +23,8 @@ binds {
     // filtered to packages with CHOICES rows. Only the Spotify bind uses
     // bunny-launch-or-focus; the rest still spawn a fresh instance every press.
     Mod+Shift+N hotkey-overlay-title="Editor: nvim" { spawn "kitty" "-o" "dynamic_title=no" "--title" "Neovim" "-e" "nvim"; }
-    Mod+Shift+B hotkey-overlay-title="Browser: brave" { spawn "brave"; }
-    Mod+Shift+Ctrl+B { spawn "brave" "--incognito"; }
+    Mod+Shift+B hotkey-overlay-title="Browser: brave" { spawn "brave" "--disable-session-crashed-bubble"; }
+    Mod+Shift+Ctrl+B { spawn "brave" "--incognito" "--disable-session-crashed-bubble"; }
     Mod+Shift+M { spawn "bunny-launch-or-focus" "^Spotify$" "spotify-launcher"; }
     Mod+Shift+T { spawn "kitty" "-e" "btop"; }
     Mod+Shift+Y { spawn "kitty" "-e" "bluetui"; }
