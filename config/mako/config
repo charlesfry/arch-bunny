@@ -29,6 +29,9 @@ on-notify=exec mpv --no-config --no-video --really-quiet "$HOME/.config/mako/sou
 invisible=1
 on-notify=none
 
+[body~=^Claude Code$]
+default-timeout=3
+
 # Browsers put the site's domain on the body's first line
 [body~=^app.slack.com]
 text-color=#ffffffff
