@@ -1,151 +1,152 @@
-# Dot Plymouth theme — Arch logo, LUKS password dialog, progress bar
-# Colors: dot palette (static, no template generation)
+# Dot Plymouth theme - quiet terminal-style boot screen
 
-# Background: solid #1e2229
-Window.SetBackgroundTopColor(0.118, 0.133, 0.161);
-Window.SetBackgroundBottomColor(0.118, 0.133, 0.161);
+Window.SetBackgroundTopColor(0.035, 0.047, 0.051);
+Window.SetBackgroundBottomColor(0.035, 0.047, 0.051);
 
-# Logo: Arch logo (#c5c8c6), centered at ~42% vertical, gentle pulse
-logo.image = Image("background.png");
-logo.sprite = Sprite(logo.image);
-logo.opacity_angle = 0;
+foreground = 0.78;
+bright = 0.91;
+cursor_on = 1;
+cursor_ticks = 0;
+progress_phase = 0;
+status = "normal";
+
+title.image = Image("bunny-title.png");
+title.sprite = Sprite(title.image);
+title.sprite.SetPosition(Window.GetX() + Window.GetWidth() / 2 - title.image.GetWidth() / 2,
+                         Window.GetY() + Window.GetHeight() * 0.34,
+                         10);
+
+status_y = Window.GetY() + Window.GetHeight() * 0.43;
+message_gap = 8;
+message_x = Window.GetX() + Window.GetWidth() * 0.375;
+message_lines[0] = "";
+message_lines[1] = "";
+message_lines[2] = "";
+message_lines[3] = "";
+message_sprites[0] = Sprite();
+message_sprites[1] = Sprite();
+message_sprites[2] = Sprite();
+message_sprites[3] = Sprite();
+message_images[0] = Image.Text("", foreground, foreground, foreground);
+message_images[1] = Image.Text("", foreground, foreground, foreground);
+message_images[2] = Image.Text("", foreground, foreground, foreground);
+message_images[3] = Image.Text("", foreground, foreground, foreground);
+for (index = 0; index < 4; index++)
+  {
+    message_sprites[index].SetPosition(message_x,
+                                       status_y + index * 28,
+                                       10 + index);
+  }
+
+fun draw_messages ()
+  {
+    for (index = 0; index < 4; index++)
+      {
+        if (message_lines[index] != "")
+          {
+            message_images[index] = Image.Text(message_lines[index], foreground, foreground, foreground);
+            message_sprites[index].SetImage(message_images[index]);
+            message_sprites[index].SetX(message_x);
+            message_sprites[index].SetY(status_y + index * 28);
+            message_sprites[index].SetOpacity(1);
+          }
+        else
+          {
+            message_sprites[index].SetOpacity(0);
+          }
+      }
+  }
+
+prompt_sprite = Sprite();
+prompt_sprite.SetOpacity(0);
+prompt_sprite.SetPosition(Window.GetX() + Window.GetWidth() / 2,
+                          Window.GetY() + Window.GetHeight() * 0.63, 20);
+
+cursor_image = Image("cursor.png");
+cursor_sprite = Sprite(cursor_image);
+cursor_sprite.SetOpacity(0);
+password_sprite = Sprite();
+password_sprite.SetOpacity(0);
+
+fun update_prompt (text, bullets)
+  {
+    prompt_image = Image.Text("passphrase:", foreground, foreground, foreground);
+    prompt_sprite.SetImage(prompt_image);
+    prompt_sprite.SetX(Window.GetX() + Window.GetWidth() / 2 - prompt_image.GetWidth() / 2);
+
+    password = "";
+    for (index = 0; index < bullets; index++)
+      {
+        password += "*";
+      }
+    password_image = Image.Text(password, bright, bright, bright);
+    password_sprite.SetImage(password_image);
+    password_sprite.SetPosition(Window.GetX() + Window.GetWidth() / 2 + prompt_image.GetWidth() / 2 + 8,
+                                Window.GetY() + Window.GetHeight() * 0.63,
+                                21);
+    password_sprite.SetOpacity(1);
+    cursor_sprite.SetX(Window.GetX() + Window.GetWidth() / 2 + prompt_image.GetWidth() / 2 + 8 + password_image.GetWidth() + 8);
+    cursor_sprite.SetY(Window.GetY() + Window.GetHeight() * 0.63);
+    prompt_sprite.SetOpacity(1);
+    cursor_sprite.SetOpacity(1);
+  }
 
 fun refresh_callback ()
   {
-    if (status == "normal")
+    if (status == "password")
       {
-        logo.opacity_angle += ((2 * 3.14) / 50) * 0.5;
-        min_opacity = 0.3;
-        opacity = (Math.Cos(logo.opacity_angle) + 1) / 2;
-        opacity *= 1 - min_opacity;
-        opacity += min_opacity;
-        logo.sprite.SetX(Window.GetX() + Window.GetWidth()  / 2 - logo.image.GetWidth()  / 2);
-        logo.sprite.SetY(Window.GetY() + Window.GetHeight() * 0.42 - logo.image.GetHeight() / 2);
-        logo.sprite.SetOpacity(opacity);
-      }
-    else
-      {
-        logo.sprite.SetX(Window.GetX() + Window.GetWidth()  / 2 - logo.image.GetWidth()  / 2);
-        logo.sprite.SetY(Window.GetY() + Window.GetHeight() * 0.42 - logo.image.GetHeight() / 2);
-        logo.sprite.SetOpacity(1);
+        cursor_ticks += 1;
+        if (cursor_ticks >= 12)
+          {
+            cursor_ticks = 0;
+            cursor_on = 1 - cursor_on;
+            cursor_sprite.SetOpacity(cursor_on);
+          }
       }
   }
 
 Plymouth.SetRefreshFunction(refresh_callback);
 
-#----------------------------------------- Dialogue --------------------------------
-
-status = "normal";
-
-fun dialog_setup()
-  {
-    local.box;
-    local.lock;
-    local.entry;
-
-    box.image = Image("box.png");
-    lock.image = Image("lock.png");
-    entry.image = Image("entry.png");
-
-    box.sprite = Sprite(box.image);
-    box.x = Window.GetX() + Window.GetWidth()  / 2 - box.image.GetWidth() / 2;
-    box.y = Window.GetY() + Window.GetHeight() * 0.56 - box.image.GetHeight() / 2;
-    box.z = 10000;
-    box.sprite.SetPosition(box.x, box.y, box.z);
-
-    # Center lock+entry group within box (8px gap between lock and entry)
-    local.group_width = lock.image.GetWidth() + 8 + entry.image.GetWidth();
-
-    lock.sprite = Sprite(lock.image);
-    lock.x = box.x + box.image.GetWidth() / 2 - group_width / 2;
-    lock.y = box.y + box.image.GetHeight() / 2 - lock.image.GetHeight() / 2;
-    lock.z = box.z + 1;
-    lock.sprite.SetPosition(lock.x, lock.y, lock.z);
-
-    entry.sprite = Sprite(entry.image);
-    entry.x = lock.x + lock.image.GetWidth() + 8;
-    entry.y = box.y + box.image.GetHeight() / 2 - entry.image.GetHeight() / 2;
-    entry.z = box.z + 1;
-    entry.sprite.SetPosition(entry.x, entry.y, entry.z);
-
-    global.dialog.box = box;
-    global.dialog.lock = lock;
-    global.dialog.entry = entry;
-    global.dialog.bullet_image = Image("bullet.png");
-    dialog_opacity(1);
-  }
-
-fun dialog_opacity(opacity)
-  {
-    dialog.box.sprite.SetOpacity(opacity);
-    dialog.lock.sprite.SetOpacity(opacity);
-    dialog.entry.sprite.SetOpacity(opacity);
-    for (index = 0; dialog.bullet[index]; index++)
-      {
-        dialog.bullet[index].sprite.SetOpacity(opacity);
-      }
-  }
-
 fun display_normal_callback ()
   {
-    global.status = "normal";
-    if (global.dialog)
-      dialog_opacity(0);
+    status = "normal";
+    cursor_ticks = 0;
+    prompt_sprite.SetOpacity(0);
+    password_sprite.SetOpacity(0);
+    cursor_sprite.SetOpacity(0);
   }
 
 fun display_password_callback (prompt, bullets)
   {
-    global.status = "password";
-    if (!global.dialog)
-      dialog_setup();
-    else
-      dialog_opacity(1);
-    for (index = 0; dialog.bullet[index] || index < bullets; index++)
-      {
-        if (!dialog.bullet[index])
-          {
-            dialog.bullet[index].sprite = Sprite(dialog.bullet_image);
-            dialog.bullet[index].x = dialog.entry.x + 6 + index * (dialog.bullet_image.GetWidth() + 2);
-            dialog.bullet[index].y = dialog.entry.y + dialog.entry.image.GetHeight() / 2 - dialog.bullet_image.GetHeight() / 2;
-            dialog.bullet[index].z = dialog.entry.z + 1;
-            dialog.bullet[index].sprite.SetPosition(dialog.bullet[index].x, dialog.bullet[index].y, dialog.bullet[index].z);
-          }
-        if (index < bullets)
-          dialog.bullet[index].sprite.SetOpacity(1);
-        else
-          dialog.bullet[index].sprite.SetOpacity(0);
-      }
+    status = "password";
+    update_prompt(prompt, bullets);
   }
 
 Plymouth.SetDisplayNormalFunction(display_normal_callback);
 Plymouth.SetDisplayPasswordFunction(display_password_callback);
 
-#----------------------------------------- Quit --------------------------------
-
-fun quit_callback ()
-  {
-    logo.sprite.SetOpacity(1);
-  }
-
-Plymouth.SetQuitFunction(quit_callback);
-
-#----------------------------------------- Message --------------------------------
-
-message_sprite = Sprite();
-message_sprite.SetPosition(10, 10, 10000);
-
 fun display_message_callback (text)
   {
-    # fg color: #abb2bf
-    my_image = Image.Text(text, 0.671, 0.698, 0.749);
-    message_sprite.SetImage(my_image);
+    for (index = 3; index > 0; index--)
+      {
+        message_lines[index] = message_lines[index - 1];
+      }
+    message_lines[0] = "> " + text;
+    draw_messages();
   }
+
+Plymouth.SetUpdateStatusFunction(display_message_callback);
 
 fun hide_message_callback (text)
   {
-    message_sprite = Sprite();
-    message_sprite.SetPosition(10, 10, 10000);
+    # Preserve the four-line history until newer messages scroll it away.
   }
 
-Plymouth.SetDisplayMessageFunction(display_message_callback);
 Plymouth.SetHideMessageFunction(hide_message_callback);
+
+fun quit_callback ()
+  {
+    title.sprite.SetOpacity(1);
+  }
+
+Plymouth.SetQuitFunction(quit_callback);
