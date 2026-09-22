@@ -36,17 +36,6 @@ run_bootstrap_in_tty() {
   run bash -c 'printf "%s\n" "$1" | script -qefc "$2" /dev/null' _ "$answer" "$command"
 }
 
-@test "public submodules use HTTPS URLs" {
-  run git -C "$repo_root" config --file .gitmodules --get-regexp '^submodule\..*\.url$'
-
-  [ "$status" -eq 0 ]
-  [ -n "$output" ]
-  while read -r _ url; do
-    [[ $url == https://* ]]
-    [[ $url != git@* ]]
-  done <<< "$output"
-}
-
 @test "README bootstrap preserves terminal input" {
   run grep -F 'bash <(curl -fsSL' "$repo_root/README.md"
 

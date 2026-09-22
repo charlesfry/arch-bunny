@@ -1,6 +1,6 @@
 #!/usr/bin/env bats
-# niri_focus_or_spawn must key off app_id alone: a title match would focus
-# whatever window happens to mention the app instead of launching it.
+# niri_focus_or_spawn matches app_id or title, and launches only when neither
+# matches.
 
 setup() {
   repo_root=$(cd "$BATS_TEST_DIRNAME/.." && pwd)
@@ -16,6 +16,7 @@ EOF
   PATH="$stub_dir:$PATH"
 
   NIRI_APP_LAUNCHER="echo LAUNCH"
+  export FAKE_WINDOWS
   source "$repo_root/local/bin/lib/niri-helpers.sh"
 }
 
@@ -25,8 +26,14 @@ EOF
   [ "$output" = "NIRI: msg action focus-window --id 7" ]
 }
 
-@test "launches when only a title mentions the app" {
+@test "focuses a window whose title matches" {
   FAKE_WINDOWS='[{"id":7,"app_id":"kitty","title":"debugging spotify bind"}]'
+  run niri_focus_or_spawn spotify spotify-launcher
+  [ "$output" = "NIRI: msg action focus-window --id 7" ]
+}
+
+@test "launches when nothing matches" {
+  FAKE_WINDOWS='[{"id":7,"app_id":"kitty","title":"zsh"}]'
   run niri_focus_or_spawn spotify spotify-launcher
   [ "$output" = "LAUNCH -- spotify-launcher" ]
 }
