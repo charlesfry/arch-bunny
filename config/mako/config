@@ -29,14 +29,25 @@ on-notify=exec mpv --no-config --no-video --really-quiet "$HOME/.config/mako/sou
 invisible=1
 on-notify=none
 
-[body~=^Claude Code$]
-default-timeout=3
+[body~="^Claude Code$"]
+text-color=#e8ecffff
+border-color=#4fd8ffff
+default-timeout=3000
 
 # Browsers put the site's domain on the body's first line
-[body~=^app.slack.com]
-text-color=#ffffffff
-border-color=#ffffffff
-on-notify=exec mpv --no-config --no-video --really-quiet --volume=130 "$HOME/.config/mako/sound-slack.mp3"
+[body~="^app.slack.com"]
+default-timeout=0
+background-color=#0d0e17ff
+text-color=#ff8de8ff
+border-color=#ff4fd8ff
+border-size=2
+border-radius=0
+padding=15
+max-icon-size=32
+icon-location=right
+outer-margin=0
+margin=5
+on-notify=exec mpv --no-config --no-video --really-quiet --volume=100 "$HOME/.config/mako/sound-slack.mp3"
 
 [urgency=critical]
 default-timeout=0
