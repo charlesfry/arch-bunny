@@ -223,7 +223,6 @@ itself; this table mirrors [`config/niri/bindings.kdl`](config/niri/bindings.kdl
 |---|---|
 | `Mod+Return` | Terminal (kitty) |
 | `Mod+Space` | Launcher (fuzzel) |
-| `Mod+Shift+Space` | Ask the hivemind (`bunny-hivemind`, one-sentence answer in a floating terminal) |
 | `Mod+R` | Set a reminder (`bunny-launch-remind`, minutes then message, e.g. `2.5 take the bread out`) |
 | `Mod+Shift+N` | Neovim in a kitty window |
 | `Mod+Shift+B` | Brave |
