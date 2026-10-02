@@ -27,12 +27,12 @@ brightness)
   ;;
 esac
 
-icon=${icons[level >= 100 ? -1 : level * ${#icons[@]} / 100]}
-[[ -n "$muted" ]] && icon=$muted_icon
+icon=${icons[level >= 100 ? -1 : level * ${#icons[@]} / 100]} category=level
+[[ -n "$muted" ]] && icon=$muted_icon category=muted
 
 # Passing the last popup's id replaces it in place; one that already closed
 # just means a new popup.
 id_file="${XDG_RUNTIME_DIR:-/tmp}/bunny-osd.id"
 read -r id 2>/dev/null <"$id_file" || id=0
-id=$(notify-send -p -r "$id" -a bunny-osd -h "int:value:$level" "$icon  $level%")
+id=$(notify-send -p -r "$id" -a bunny-osd -c "$category" -h "int:value:$level" "$icon  $level%")
 printf '%s\n' "$id" >"$id_file"

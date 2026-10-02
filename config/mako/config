@@ -79,6 +79,12 @@ text-alignment=center
 progress-color=over #4fd8ff66
 on-notify=none
 
+# Pink while muted so it reads at a glance
+[app-name=bunny-osd category=muted]
+border-color=#ff4fd8ff
+text-color=#ff8de8ff
+progress-color=over #ff4fd866
+
 # A level is feedback for a key just pressed, so DND doesn't hide it
 [mode=dnd app-name=bunny-osd]
 invisible=0

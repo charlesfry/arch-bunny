@@ -77,7 +77,7 @@
       "headset": "󰋎"
     },
     "tooltip-format": "{desc} · {volume}%",
-    "on-click": "bunny-osd volume mute"
+    "on-click": "bunny-launch-term-float wiremix"
   },
   "network": {
     "interval": 5,
