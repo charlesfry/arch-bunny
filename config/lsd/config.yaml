@@ -1,6 +1,11 @@
 color:
   theme: custom
 
+sorting:
+  dir-grouping: first
+
+display: almost-all
+
 ignore-globs:
     - node_modules
     - .git
