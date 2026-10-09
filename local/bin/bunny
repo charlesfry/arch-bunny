@@ -1,0 +1,5 @@
+#!/bin/bash
+# Print a random rabbit fact under a bunny.
+set -euo pipefail
+
+printf '  (\\ /)\n  ( . .)  %s\n c(")(")\n' "$(shuf -n1 "$(dirname "$(realpath "$0")")/lib/rabbit-facts.txt")"
