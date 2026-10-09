@@ -54,3 +54,9 @@ window-rule {
     inactive-color "#e06c75"
   }
 }
+
+// Show the wallpaper behind workspaces in the Overview
+layer-rule {
+  match namespace="^wallpaper$"
+  place-within-backdrop true
+}
