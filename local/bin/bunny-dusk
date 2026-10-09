@@ -1,0 +1,51 @@
+#!/bin/bash
+# Swap the wallpaper for an amber, low-blue copy between sunset and sunrise.
+#
+# Usage: bunny-dusk              refresh today's sun times, restart swaybg on a day/night change
+#        bunny-dusk --wallpaper  print the wallpaper for right now (swaybg.service runs this)
+set -euo pipefail
+
+day=$HOME/background.jpg
+cache=${XDG_CACHE_HOME:-$HOME/.cache}/bunny
+night=$cache/background-night.jpg
+sun=$cache/sun # "<sunrise> <sunset>" in minutes since midnight
+last_phase=$cache/dusk-phase
+
+# 7am/7pm until wttr.in has answered once
+sunrise=420 sunset=1140
+[[ -r $sun ]] && read -r sunrise sunset <"$sun"
+
+phase() { # -> "day" or "night"
+	local now=$((10#$(date +%H) * 60 + 10#$(date +%M)))
+	# TODO(human)
+}
+
+if [[ ${1-} == --wallpaper ]]; then
+	if [[ $(phase) == night ]]; then
+		# Luminance mapped onto amber, so the brightest pixel carries at most 0x4f blue
+		[[ $night -nt $day ]] || magick "$day" -colorspace gray +level-colors 'black,#ff9a4f' "$night"
+		echo "$night"
+	else
+		echo "$day"
+	fi
+	exit
+fi
+
+mkdir -p "$cache"
+
+# Once a day is plenty; on failure (offline, polar night) keep the last known times
+if [[ ! -e $sun || $(date -r "$sun" +%F) != $(date +%F) ]]; then
+	loc=
+	[[ -r $HOME/.config/bunny/weather-location ]] && read -r loc <"$HOME/.config/bunny/weather-location"
+	if json=$(curl -fsS --max-time 5 "https://wttr.in/${loc}?format=j1" 2>/dev/null) &&
+		rise=$(date -d "$(jq -r '.weather[0].astronomy[0].sunrise' <<<"$json")" +'%-H*60+%-M') &&
+		dusk=$(date -d "$(jq -r '.weather[0].astronomy[0].sunset' <<<"$json")" +'%-H*60+%-M'); then
+		sunrise=$((rise)) sunset=$((dusk))
+		echo "$sunrise $sunset" >"$sun"
+	fi
+fi
+
+now_phase=$(phase)
+[[ -r $last_phase && $(<"$last_phase") == "$now_phase" ]] && exit
+echo "$now_phase" >"$last_phase"
+systemctl --user try-restart swaybg.service

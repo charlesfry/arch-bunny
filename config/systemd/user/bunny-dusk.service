@@ -1,0 +1,6 @@
+[Unit]
+Description=Switch between day and amber night wallpaper at sunrise and sunset
+
+[Service]
+Type=oneshot
+ExecStart=%h/.local/bin/bunny-dusk

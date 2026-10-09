@@ -1,0 +1,9 @@
+[Unit]
+Description=Check for sunrise or sunset every 10 minutes
+
+[Timer]
+OnStartupSec=60s
+OnCalendar=*:0/10
+
+[Install]
+WantedBy=timers.target
