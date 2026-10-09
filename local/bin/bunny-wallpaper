@@ -3,6 +3,7 @@
 # bunny-wallpaper — Set desktop wallpaper from a URL or file path
 #
 # Usage:
+#   bunny-wallpaper                 pick from the repo wallpapers sized for the focused monitor
 #   bunny-wallpaper <url-or-path>
 #
 # Copies or downloads the image to ~/background.jpg (always .jpg),
@@ -12,13 +13,22 @@ set -euo pipefail
 
 TARGET="$HOME/background.jpg"
 
-usage() {
-  echo "Usage: bunny-wallpaper <url-or-path>"
-  echo "  Sets the desktop wallpaper from a URL or local file."
-  exit 1
-}
+if [[ $# -lt 1 ]]; then
+  read -r w h < <(niri msg -j focused-output | jq -r '.modes[.current_mode] | "\(.width) \(.height)"')
+  dir="$(dirname "$(readlink -f "$0")")/../../assets/wallpaper/${w}x${h}"
+  [[ -d "$dir" ]] || { echo "Error: No wallpapers for ${w}x${h}" >&2; exit 1; }
 
-[[ $# -lt 1 ]] && usage
+  # fuzzel only renders PNG/SVG icons, so cache a PNG thumbnail per image
+  thumbs=${XDG_CACHE_HOME:-$HOME/.cache}/bunny/wallpaper-thumbs
+  mkdir -p "$thumbs"
+  name=$(for f in "$dir"/*; do
+    n=${f##*/}
+    t="$thumbs/${w}x${h}-${n%.*}.png"
+    [[ $t -nt $f ]] || magick "$f" -thumbnail 256x256 "$t"
+    printf '%s\0icon\x1f%s\n' "$n" "$t"
+  done | fuzzel --dmenu --prompt="Wallpaper: " --line-height=96 --lines=6) || exit 0
+  set -- "$dir/$name"
+fi
 src="$1"
 
 if [[ "$src" =~ ^https?:// ]]; then
