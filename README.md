@@ -350,7 +350,7 @@ in `bunny-osd`. The popup doesn't draw over the lock screen.
 
 Some actions have no keybinding and live in the bar instead: click the idle
 indicator for `bunny-toggle-idle`, the notification indicator for
-`bunny-toggle-dnd`, the recording indicator for `bunny-cmd-screenrecord`
+`bunny-donotdisturb`, the recording indicator for `bunny-cmd-screenrecord`
 (gpu-screen-recorder, toggles), the volume module to mute/unmute, the network
 module for `bunny-launch-wifi`, and the battery module for `bunny-menu power`.
 
@@ -411,8 +411,9 @@ ignored and treated as unbounded. Rules using `BYSETPOS` are skipped rather than
 notified on, since expanding the set without applying the selection would fire on
 every member of it, and `BYWEEKNO` and `BYYEARDAY` are not expanded.
 
-**Dismissal** is `Mod+Comma` (top notification) and `Mod+Shift+Comma` (all), with
-`bunny-toggle-dnd` on the bar's notification indicator.
+**Dismissal** is `Mod+Comma` (top notification) and `Mod+Shift+Comma` (all).
+Do not disturb, `bunny-donotdisturb` (`Mod+Ctrl+Comma` or the bar's notification indicator), holds
+notifications silently while on and shows them once it's turned off.
 
 ### Weather
 

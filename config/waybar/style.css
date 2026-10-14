@@ -1,3 +1,8 @@
+/* Status icons: neon blue when things are fine, pink when something is off
+   (dnd on, muted, offline, battery low) */
+@define-color enabled #4fd8ff;
+@define-color disabled #ff4fd8;
+
 * {
   background: none;
   background-color: transparent;
@@ -43,19 +48,20 @@ window#waybar {
 #tray,
 #battery,
 #pulseaudio,
-#network {
+#network,
+#custom-dnd {
   opacity: 0.7;
-  color: #7d89b8;
+  color: @enabled;
   padding-left: 5px;
   padding-right: 8px;
 }
 
-#network.disconnected {
-  color: #ff4fd8;
-}
-
-#pulseaudio.muted {
-  color: #ff4fd8;
+#network.disconnected,
+#pulseaudio.muted,
+#custom-dnd.active,
+#battery.warning,
+#battery.critical {
+  color: @disabled;
 }
 
 #custom-weather {
@@ -84,11 +90,11 @@ window#waybar {
 }
 
 #workspaces button.focused {
-  color: #4fd8ff;
+  color: @enabled;
 }
 
 #workspaces button.active {
-  color: #4fd8ff;
+  color: @enabled;
 }
 
 #workspaces button.empty {
@@ -101,10 +107,6 @@ window#waybar {
   padding: 0 4px;
 }
 
-#battery.critical {
-  color: #ff4fd8;
-}
-
 tooltip {
   background: rgba(13, 14, 23, 0.95);
 }
@@ -115,15 +117,13 @@ tooltip * {
 }
 
 #custom-idle-indicator,
-#custom-screenrecord-indicator,
-#custom-dnd {
+#custom-screenrecord-indicator {
   font-size: 12px;
   padding: 0 6px;
   color: #7d89b8;
 }
 
-#custom-idle-indicator,
-#custom-dnd {
+#custom-idle-indicator {
   opacity: 0.7;
 }
 

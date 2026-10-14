@@ -13,7 +13,6 @@
   "modules-left": [
     "clock",
     "custom/weather",
-    "custom/dnd",
     "custom/idle-indicator",
     "custom/screenrecord-indicator"
   ],
@@ -23,6 +22,7 @@
   "modules-right": [
     "custom/niri-column-indicator",
     "tray",
+    "custom/dnd",
     "pulseaudio",
     "network",
     "battery"

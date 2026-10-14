@@ -233,6 +233,7 @@ binds {
     Mod+Comma { spawn "makoctl" "dismiss"; }
     // Expel the bottom window from the focused column to the right.
     Mod+Shift+Comma { spawn "makoctl" "dismiss" "--all"; }
+    Mod+Ctrl+Comma hotkey-overlay-title="Toggle do not disturb" { spawn "bunny-donotdisturb"; }
 
     Mod+R hotkey-overlay-title="Set a reminder" { spawn "bunny-launch-remind"; }
 

@@ -60,10 +60,13 @@ on-notify=exec mpv --no-config --no-video --really-quiet "$HOME/.config/mako/sou
 [category=silent]
 on-notify=none
 
-# Last so it also silences criticals
+# Last so it also silences criticals. Timeouts are held so hidden notifications
+# queue until DND ends instead of expiring unseen
 [mode=dnd]
 invisible=1
 on-notify=none
+ignore-timeout=1
+default-timeout=0
 
 # bunny-osd: volume and brightness levels, replaced in place rather than stacked
 [app-name=bunny-osd]

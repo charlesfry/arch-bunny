@@ -63,7 +63,7 @@
     "return-type": "json"
   },
   "custom/dnd": {
-    "on-click": "bunny-toggle-dnd",
+    "on-click": "bunny-donotdisturb",
     "exec": "$HOME/.config/waybar/indicators/dnd.sh",
     "signal": 8,
     "return-type": "json"
