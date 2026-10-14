@@ -50,7 +50,6 @@ window#waybar {
 #pulseaudio,
 #network,
 #custom-dnd {
-  opacity: 0.7;
   color: @enabled;
   padding-left: 5px;
   padding-right: 8px;
