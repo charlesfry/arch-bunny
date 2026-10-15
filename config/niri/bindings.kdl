@@ -30,6 +30,7 @@ binds {
     Mod+Shift+O { spawn "bunny-launch-wifi"; }
     Mod+D { spawn "kitty" "-e" "lazydocker"; }
     Mod+Shift+G { spawn "signal-desktop"; }
+    Mod+Shift+Ctrl+G { spawn "bunny-launch-or-focus" "messages.google.com" "gtk-launch" "google-messages"; }
     Mod+Shift+D       { spawn "bunny-launch-or-focus" "discord"; }
     Mod+Shift+Slash { spawn "gtk-launch" "bitwarden"; }
     Mod+Shift+F { spawn "nautilus" "--new-window"; }
