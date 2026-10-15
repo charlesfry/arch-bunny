@@ -11,6 +11,7 @@
 vim.api.nvim_create_autocmd("FileType", {
   pattern = "python",
   callback = function()
-    vim.bo.formatprg = "isort --multi-line=VERTICAL_HANGING_INDENT --trailing-comma --force-grid-wrap=2 --line-length=1 -"
+    vim.bo.formatprg =
+      "isort --multi-line=VERTICAL_HANGING_INDENT --trailing-comma --force-grid-wrap=2 --line-length=1 -"
   end,
 })
