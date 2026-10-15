@@ -13,7 +13,7 @@ setup() {
   wants="$fake_home/.config/systemd/user/timers.target.wants/bunny-update-location.timer"
   ln -s "$repo_root/config/systemd/user/bunny-update-location.timer" "$wants"
 
-  HOME="$fake_home" run "$repo_root/local/bin/bunny-migrate"
+  HOME="$fake_home" run "$repo_root/local/bin/bunny-stow"
   [ "$status" -eq 0 ]
 
   [ "$(readlink "$fake_home/.bash_prompt")" != "$repo_root/home/.bash_prompt" ]
