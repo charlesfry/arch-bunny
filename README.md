@@ -231,6 +231,7 @@ itself; this table mirrors [`config/niri/bindings.kdl`](config/niri/bindings.kdl
 | `Mod+Shift+T` | btop in a kitty window |
 | `Mod+Shift+D` | lazydocker in a kitty window |
 | `Mod+Shift+G` | Signal |
+| `Mod+Shift+Ctrl+G` | Google Messages (launch or focus) |
 | `Mod+Shift+Slash` | Bitwarden |
 | `Mod+Shift+F` | Nautilus, new window |
 | `Mod+Shift+S` | System menu (sound, Wi-Fi, Bluetooth) |
