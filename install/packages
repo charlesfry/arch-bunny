@@ -64,6 +64,7 @@ plymouth
 polkit-gnome
 power-profiles-daemon
 python-gobject
+python-isort
 ripgrep
 rtkit
 rust
