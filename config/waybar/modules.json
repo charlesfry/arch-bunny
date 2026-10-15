@@ -34,7 +34,7 @@
     "interval": 30,
     "on-click": "bunny-menu power",
     "states": {
-      "warning": 20,
+      "warning": 40,
       "critical": 10
     }
   },

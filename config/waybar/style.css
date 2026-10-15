@@ -1,7 +1,8 @@
 /* Status icons: neon blue when things are fine, pink when something is off
-   (dnd on, muted, offline, battery low) */
+   (dnd on, muted, offline, battery critical), orange for battery getting low */
 @define-color enabled #4fd8ff;
 @define-color disabled #ff4fd8;
+@define-color warning #df7a1f;
 
 * {
   background: none;
@@ -58,9 +59,12 @@ window#waybar {
 #network.disconnected,
 #pulseaudio.muted,
 #custom-dnd.active,
-#battery.warning,
 #battery.critical {
   color: @disabled;
+}
+
+#battery.warning {
+  color: @warning;
 }
 
 #custom-weather {
