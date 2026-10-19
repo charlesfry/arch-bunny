@@ -602,10 +602,10 @@ EOF
     ln -s /dev/null "$plan_dir/hooks/90-mkinitcpio-install.hook"
     if [[ $plan == modern ]]; then
       gpu='VGA compatible controller: NVIDIA Corporation GeForce RTX 4070'
-      expected='linux-headers nvidia-open-dkms nvidia-utils lib32-nvidia-utils libva-nvidia-driver'
+      expected='linux-headers nvidia-open-dkms nvidia-utils lib32-nvidia-utils libva-nvidia-driver nvidia-container-toolkit'
     else
       gpu='VGA compatible controller: NVIDIA Corporation GeForce GTX 1080'
-      expected='linux-headers nvidia-580xx-dkms nvidia-580xx-utils lib32-nvidia-580xx-utils'
+      expected='linux-headers nvidia-580xx-dkms nvidia-580xx-utils lib32-nvidia-580xx-utils nvidia-container-toolkit'
     fi
 
     run env \

@@ -109,6 +109,14 @@ fi
 run_logged "Installing the ufw-docker rules" sudo ufw-docker install
 run_logged "Reloading the firewall" sudo ufw reload
 
+# nvidia-ctk is only present when 11-nvidia.sh found a GPU.
+if command -v nvidia-ctk >/dev/null; then
+  run_logged "Registering the NVIDIA container runtime" \
+    sudo nvidia-ctk runtime configure --runtime=docker
+  run_logged "Restarting Docker if it is running" \
+    sudo systemctl try-restart docker.service
+fi
+
 if systemctl is-enabled --quiet docker.socket 2>/dev/null; then
   info "docker.socket is already enabled"
 else
