@@ -138,6 +138,14 @@ resolved_owns_resolv_conf() {
   [[ -L /etc/resolv.conf && $(readlink /etc/resolv.conf) == *stub-resolv* ]]
 }
 
+llmnr_is_off() {
+  [[ -z $(ss -Hlntu 'sport = :5355') ]]
+}
+
+unit_is_masked() {
+  [[ $(readlink "/etc/systemd/system/$1") == /dev/null ]]
+}
+
 mime_default_is() {
   local mime_type=$1
   local desktop_id=$2
@@ -410,6 +418,10 @@ main() {
   fi
 
   check_command "systemd-resolved owns resolv.conf" resolved_owns_resolv_conf
+  check_command "LLMNR is not listening" llmnr_is_off
+  for unit in systemd-pcrproduct.service systemd-pcrlogin@.service systemd-tpm2-setup-early.service; do
+    check_command "TPM unit is masked: $unit" unit_is_masked "$unit"
+  done
   check_command "DNS resolution works" getent ahosts archlinux.org
   ufw_status=$(sudo ufw status 2>/dev/null || true)
   if grep -Fqx 'Status: active' <<< "$ufw_status"; then

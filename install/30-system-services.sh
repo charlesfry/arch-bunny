@@ -64,6 +64,18 @@ if [[ ! -L /etc/resolv.conf ]] || [[ "$(readlink /etc/resolv.conf)" != *"stub-re
   sudo ln -sf ../run/systemd/resolve/stub-resolv.conf /etc/resolv.conf
 fi
 
+# LLMNR answers name queries from anyone on the LAN, a spoofing target on shared Wi-Fi
+sudo mkdir -p /etc/systemd/resolved.conf.d
+sudo cp "$BUNNY_INSTALL_DEFAULTS_PATH/systemd/no-llmnr.conf" /etc/systemd/resolved.conf.d/10-no-llmnr.conf
+run_logged "Restarting systemd-resolved" \
+  sudo systemctl try-restart systemd-resolved.service
+
+# Mask TPM NvPCR measurement units — root unlocks by passphrase, nothing reads
+# these PCRs, and they fail every boot with "Could not extend NvPCR"
+for unit in systemd-pcrproduct.service systemd-pcrlogin@.service systemd-tpm2-setup-early.service; do
+  sudo ln -sf /dev/null "/etc/systemd/system/$unit"
+done
+
 # Disable NVIDIA suspend/hibernate services
 # NOTE-david possibly revisit this after laptop testing
 for svc in nvidia-suspend nvidia-hibernate nvidia-resume nvidia-suspend-then-hibernate; do
