@@ -260,6 +260,12 @@ fi
 # UKIs are omitted before those artifacts are removed.
 staged_limine_config=$(mktemp)
 cp "$BUNNY_INSTALL_DEFAULTS_PATH/limine/limine.conf" "$staged_limine_config"
+# Re-running over an existing bunny config keeps its per-machine timeout.
+if sudo grep -Fq 'bunny_linux.efi' "$last_known_limine_config"; then
+  # First valid timeout line only (seconds or "no"); anything else keeps the template's.
+  existing_timeout=$(sudo sed -nE '/^timeout:[[:space:]]*([0-9]+|no)[[:space:]]*$/{p;q}' "$last_known_limine_config")
+  [[ -z $existing_timeout ]] || sed -i "s/^timeout:.*/$existing_timeout/" "$staged_limine_config"
+fi
 if ! sudo awk '
   function flush_entry() {
     if (entry != "" && entry !~ /\/EFI\/Linux\/arch-linux(-fallback)?\.efi/) {
