@@ -8,7 +8,7 @@
 -- e.g. vim.api.nvim_del_augroup_by_name("lazyvim_wrap_spell")
 
 -- gq on python imports: wrap `from x import (...)` one name per line.
--- Expands the range to the whole statement (matching paren) before isort runs.
+-- Expands the range to the whole statement (matching paren) before ruff runs.
 function _G.PyImportFormat()
   local buf = 0
   local first = vim.v.lnum
@@ -32,10 +32,10 @@ function _G.PyImportFormat()
     table.insert(lines, l[1])
     depth = depth_of(l, depth)
   end
-  local cmd = "isort --multi-line=VERTICAL_HANGING_INDENT --trailing-comma --force-grid-wrap=2 --line-length=1 -"
-  local out = vim.fn.systemlist(cmd, lines)
+  local cmd = "ruff check --fix --select=I001 --exit-zero --quiet --stdin-filename=gq.py - | ruff format --quiet -"
+  local out = vim.fn.systemlist(cmd, require("pyimports").explode(lines))
   if vim.v.shell_error ~= 0 then
-    vim.notify("isort failed:\n" .. table.concat(out, "\n"), vim.log.levels.WARN)
+    vim.notify("ruff failed:\n" .. table.concat(out, "\n"), vim.log.levels.WARN)
     return 0
   end
   vim.api.nvim_buf_set_lines(buf, first - 1, last, false, out)

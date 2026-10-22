@@ -1,14 +1,17 @@
--- isort before ruff: force_grid_wrap=2 explodes any multi-name import into
--- parens, then ruff's magic trailing comma keeps it that way.
+-- explode_imports adds a magic trailing comma to multi-name imports, ruff
+-- sorts them and keeps the comma, then ruff format puts one name per line.
 return {
   {
     "stevearc/conform.nvim",
     opts = {
-      formatters_by_ft = { python = { "isort", "ruff_format" } },
+      formatters_by_ft = { python = { "explode_imports", "ruff_organize_imports", "ruff_format" } },
       formatters = {
-        isort = { prepend_args = { "--profile", "black", "--force-grid-wrap", "2" } },
+        explode_imports = {
+          format = function(_, _, lines, callback)
+            callback(nil, require("pyimports").explode(lines))
+          end,
+        },
       },
     },
   },
-  { "mason-org/mason.nvim", opts = { ensure_installed = { "isort" } } },
 }
