@@ -11,36 +11,9 @@ if [[ "$(pwd)" != "$BUNNY_PATH" ]]; then
 fi
 log "Working directory: $(pwd)"
 
-remove_regular_stow_conflict() {
-  local path=$1
-
-  if [[ -f $path && ! -L $path ]]; then
-    log "Removing regular file that conflicts with Stow: $path"
-    rm -f -- "$path"
-  fi
-}
-
-remove_regular_stow_conflict "$HOME/.bashrc"
-
-step "Stowing home files"
-run_logged "Stowing home files" stow -t "$HOME" home
-
-remove_regular_stow_conflict "$HOME/.config/niri/config.kdl"
-
-mkdir -p "$HOME/.config"
-for managed_config in \
-  "$HOME/.config/mimeapps.list" \
-  "$HOME/.config/gtk-3.0/settings.ini" \
-  "$HOME/.config/gtk-4.0/settings.ini" \
-  "$HOME/.config/btop/btop.conf"; do
-  remove_regular_stow_conflict "$managed_config"
-done
-run_logged "Stowing application configuration" \
-  stow --no-folding -t "$HOME/.config" config
-
-mkdir -p "$HOME/.local"
-run_logged "Stowing local executables" \
-  stow --no-folding -t "$HOME/.local" local
+# useradd copies a stock .bashrc from /etc/skel, which would block stow
+rm -f "$HOME/.bashrc"
+run_logged "Stowing dotfiles" local/bin/bunny-stow
 
 # Machine-local shell settings, sourced at the end of ~/.bashrc
 if [[ -f "$HOME/.personal.bashrc" && ! -e "$HOME/.bashrc.local" ]]; then

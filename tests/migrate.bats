@@ -21,3 +21,13 @@ setup() {
   [ ! -e "$fake_home/.gone-away" ] && [ ! -L "$fake_home/.gone-away" ]
   [ -L "$wants" ]
 }
+
+@test "migrate fails instead of overwriting a regular file" {
+  echo "local" > "$fake_home/.bashrc"
+
+  HOME="$fake_home" run "$repo_root/local/bin/bunny-stow"
+  [ "$status" -ne 0 ]
+  [[ $output == *"existing target .bashrc"* ]]
+
+  [ "$(cat "$fake_home/.bashrc")" = local ]
+}

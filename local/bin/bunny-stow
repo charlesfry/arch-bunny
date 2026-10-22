@@ -35,6 +35,8 @@ for spec in "$USER_HOME:home" "$USER_HOME/.config:config" "$USER_HOME/.local:loc
   done < <(find "$root" "${maxdepth[@]}" -type l -print0)
 done
 
+mkdir -p "$USER_HOME/.config" "$USER_HOME/.local"
+
 printf 'Restowing dotfiles from %s...\n' "$REPO_ROOT"
 stow --restow -t "$USER_HOME" home
 stow --restow --no-folding -t "$USER_HOME/.config" config

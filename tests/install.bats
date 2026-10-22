@@ -60,11 +60,12 @@ setup() {
 
 @test "Stow uses explicit validated home targets" {
   dotfiles_script=$repo_root/install/20-dotfiles.sh
+  stow_script=$repo_root/local/bin/bunny-stow
 
-  grep -Fq 'stow -t "$HOME" home' "$dotfiles_script"
-  grep -Fq 'stow --no-folding -t "$HOME/.config" config' "$dotfiles_script"
-  grep -Fq 'stow --no-folding -t "$HOME/.local" local' "$dotfiles_script"
-  grep -Fq 'if [[ -f $path && ! -L $path ]]; then' "$dotfiles_script"
+  grep -Fq 'run_logged "Stowing dotfiles" local/bin/bunny-stow' "$dotfiles_script"
+  grep -Fq 'stow --restow -t "$USER_HOME" home' "$stow_script"
+  grep -Fq 'stow --restow --no-folding -t "$USER_HOME/.config" config' "$stow_script"
+  grep -Fq 'stow --restow --no-folding -t "$USER_HOME/.local" local' "$stow_script"
   grep -Fq 'verify_user_ownership' "$dotfiles_script"
 }
 
@@ -309,7 +310,6 @@ EOF
     "$clean_home/.config/gtk-3.0/settings.ini" \
     "$clean_home/.config/gtk-4.0/settings.ini"
   [ "$status" -eq 1 ]
-  grep -Fq '"$HOME/.config/mimeapps.list"' "$repo_root/install/20-dotfiles.sh"
   run grep -Fq '91-mimes.sh' "$repo_root/install.sh"
   [ "$status" -eq 1 ]
   [ ! -e "$repo_root/install/91-mimes.sh" ]
