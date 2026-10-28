@@ -6,7 +6,9 @@ vim.opt.wrap = true
 vim.opt.linebreak = true
 vim.g.autoformat = true
 -- set gw text width before wrapping. Default 79
-vim.bo.textwidth = 79
+vim.opt.textwidth = 79
+-- also auto-wraps while typing; to stop that for code but keep it for comments:
+-- vim.opt.formatoptions:remove("t")
 -- Source a trusted per-project .nvim.lua
 vim.o.exrc = true
 -- open in-line linter errors when jumping to a line. default false.

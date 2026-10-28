@@ -24,16 +24,21 @@ vim.keymap.set("n", "-", "<C-x>", { desc = "Decrement number" })
 vim.keymap.set("n", "<C-a>", "gg<S-v>G", { desc = "Select all" })
 
 -- Misc
+vim.keymap.set("n", "<leader>gw", "<cmd>g/^\\s*#/normal! gww<CR>``", { desc = "Reflow # comment lines" })
 -- <leader>ts is used by onedark to toggle the theme
 vim.keymap.set("n", "<leader>dl", "d$")
 vim.keymap.set("n", "<leader>h", function()
   -- nav_hunk is async, so center in its callback once the cursor has moved
-  require("gitsigns").nav_hunk("next", nil, function() vim.cmd("normal! zz") end)
+  require("gitsigns").nav_hunk("next", nil, function()
+    vim.cmd("normal! zz")
+  end)
 end, { desc = "Next hunk (centered)" })
 
 vim.keymap.set("n", "<leader>H", function()
   -- nav_hunk is async, so center in its callback once the cursor has moved
-  require("gitsigns").nav_hunk("prev", nil, function() vim.cmd("normal! zz") end)
+  require("gitsigns").nav_hunk("prev", nil, function()
+    vim.cmd("normal! zz")
+  end)
 end, { desc = "Previous hunk (centered)" })
 
 -- Trim trailing whitespace across the whole buffer, preserving cursor/view and
@@ -45,17 +50,13 @@ local function trim_trailing_whitespace()
 end
 vim.api.nvim_create_user_command("Trim", trim_trailing_whitespace, { desc = "Trim trailing whitespace" })
 vim.keymap.set("n", "<leader>tw", trim_trailing_whitespace, { desc = "Trim trailing whitespace (whole buffer)" })
-vim.keymap.set("n", "<leader>pi",
-  function()
-    -- get current line
-    local line_nr = vim.api.nvim_win_get_cursor(0)[1]
-    local line = vim.api.nvim_buf_get_lines(0, line_nr - 1, line_nr, false)[1]
+vim.keymap.set("n", "<leader>pi", function()
+  -- get current line
+  local line_nr = vim.api.nvim_win_get_cursor(0)[1]
+  local line = vim.api.nvim_buf_get_lines(0, line_nr - 1, line_nr, false)[1]
 
-    -- append comment if it's not already there
-    if not line:match("# pyright: ignore") then
-      vim.api.nvim_buf_set_lines(0, line_nr - 1, line_nr, false, { line .. "  # pyright: ignore" })
-    end
+  -- append comment if it's not already there
+  if not line:match("# pyright: ignore") then
+    vim.api.nvim_buf_set_lines(0, line_nr - 1, line_nr, false, { line .. "  # pyright: ignore" })
   end
-  , { silent = true, desc = "Append # pyright: ignore to current line" }
-)
-
+end, { silent = true, desc = "Append # pyright: ignore to current line" })
