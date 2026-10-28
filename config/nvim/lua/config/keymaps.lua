@@ -60,3 +60,5 @@ vim.keymap.set("n", "<leader>pi", function()
     vim.api.nvim_buf_set_lines(0, line_nr - 1, line_nr, false, { line .. "  # pyright: ignore" })
   end
 end, { silent = true, desc = "Append # pyright: ignore to current line" })
+vim.keymap.set("n", "<leader>fi", LazyVim.pick("files", { hidden = true, ignored = true }), { desc = "Find Files incl. hidden+ignored (Root Dir)" })
+vim.keymap.set("n", "<leader>fh", LazyVim.pick("files", { hidden = true }), { desc = "Find Files incl. hidden (Root Dir)" })
