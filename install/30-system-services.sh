@@ -28,6 +28,9 @@ fi
 sudo mkdir -p /etc/iwd
 sudo cp "$BUNNY_INSTALL_DEFAULTS_PATH/iwd/main.conf" /etc/iwd/main.conf
 
+sudo mkdir -p /etc/systemd/logind.conf.d
+sudo cp "$BUNNY_INSTALL_DEFAULTS_PATH/logind/lid.conf" /etc/systemd/logind.conf.d/lid.conf
+
 # Battery low/critical notifications, event-driven off the power_supply
 # uevent udev already receives (no resident watcher)
 sudo mkdir -p /etc/udev/rules.d
