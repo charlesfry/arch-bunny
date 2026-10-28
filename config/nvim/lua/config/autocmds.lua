@@ -23,10 +23,24 @@ function _G.PyImportFormat()
   while first > 1 and vim.api.nvim_buf_get_lines(buf, first - 1, first, false)[1]:match("^%s") do
     first = first - 1
   end
+  -- not an import: ruff formats just the gq lines, with the whole file as context
+  local head = vim.api.nvim_buf_get_lines(buf, first - 1, first, false)[1]
+  if not (head:match("^from%s") or head:match("^import%s")) then
+    local range = vim.v.lnum .. "-" .. (vim.v.lnum + vim.v.count)
+    local name = vim.api.nvim_buf_get_name(buf)
+    local out = vim.fn.systemlist({ "ruff", "format", "--quiet", "--range=" .. range, "--stdin-filename=" .. name, "-" },
+      vim.api.nvim_buf_get_lines(buf, 0, -1, false))
+    if vim.v.shell_error ~= 0 then
+      vim.notify("ruff failed:\n" .. table.concat(out, "\n"), vim.log.levels.WARN)
+      return 0
+    end
+    vim.api.nvim_buf_set_lines(buf, 0, -1, false, out)
+    return 0
+  end
   local lines = vim.api.nvim_buf_get_lines(buf, first - 1, last, false)
   local depth = depth_of(lines, 0)
-  -- end of statement: walk down until the parens balance
-  while depth > 0 and last < vim.api.nvim_buf_line_count(buf) do
+  -- end of statement: walk down until the parens balance and no trailing backslash
+  while (depth > 0 or lines[#lines]:match("\\%s*$")) and last < vim.api.nvim_buf_line_count(buf) do
     last = last + 1
     local l = vim.api.nvim_buf_get_lines(buf, last - 1, last, false)
     table.insert(lines, l[1])

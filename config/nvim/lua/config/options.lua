@@ -5,9 +5,10 @@ vim.opt.relativenumber = true
 vim.opt.wrap = true
 vim.opt.linebreak = true
 vim.g.autoformat = true
+-- set gw text width before wrapping. Default 79
+vim.bo.textwidth = 79
 -- Source a trusted per-project .nvim.lua
 vim.o.exrc = true
-
 -- Dedicated, conda-independent Python host for remote plugins (molten).
 -- Only point at it when it exists,
 -- so a machine without the Jupyter stack falls back to the default provider.
