@@ -9,6 +9,8 @@ vim.g.autoformat = true
 vim.bo.textwidth = 79
 -- Source a trusted per-project .nvim.lua
 vim.o.exrc = true
+-- open in-line linter errors when jumping to a line. default false.
+vim.diagnostic.config({ jump = { float = true } })
 -- Dedicated, conda-independent Python host for remote plugins (molten).
 -- Only point at it when it exists,
 -- so a machine without the Jupyter stack falls back to the default provider.
