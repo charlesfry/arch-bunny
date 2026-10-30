@@ -17,6 +17,9 @@ focus_follows_mouse no
 # Terminals
 bindsym $mod+Return exec bunny-launch-term-cwd
 
+# App launcher
+bindsym $mod+space exec fuzzel
+
 # Window focus
 bindsym $mod+h focus left
 bindsym $mod+j focus down
