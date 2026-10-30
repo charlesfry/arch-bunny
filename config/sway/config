@@ -1,0 +1,82 @@
+set $mod Mod4
+
+exec uwsm finalize
+
+input type:keyboard {
+  repeat_delay 300
+  repeat_rate 50
+  xkb_numlock enabled
+}
+
+output eDP-1 mode 2880x1920@120.000Hz scale 2
+output HDMI-A-1 mode 1920x1080@60.000Hz scale 1
+
+default_border pixel 1
+focus_follows_mouse no
+
+# Terminals
+bindsym $mod+Return exec bunny-launch-term-cwd
+
+# Window focus
+bindsym $mod+h focus left
+bindsym $mod+j focus down
+bindsym $mod+k focus up
+bindsym $mod+l focus right
+
+# Cycle workspaces
+bindsym $mod+d workspace next
+bindsym $mod+u workspace prev
+
+# Move windows
+bindsym $mod+Shift+h move left
+bindsym $mod+Shift+j move down
+bindsym $mod+Shift+k move up
+bindsym $mod+Shift+l move right
+
+# Resize windows
+bindsym $mod+Ctrl+h resize shrink width 10 ppt
+bindsym $mod+Ctrl+l resize grow width 10 ppt
+bindsym $mod+Ctrl+j resize grow height 10 ppt
+bindsym $mod+Ctrl+k resize shrink height 10 ppt
+
+# Window actions
+bindsym $mod+w kill
+bindsym $mod+f fullscreen toggle
+
+# Workspaces
+bindsym $mod+1 workspace number 1
+bindsym $mod+2 workspace number 2
+bindsym $mod+3 workspace number 3
+bindsym $mod+4 workspace number 4
+bindsym $mod+5 workspace number 5
+bindsym $mod+6 workspace number 6
+bindsym $mod+7 workspace number 7
+bindsym $mod+8 workspace number 8
+bindsym $mod+9 workspace number 9
+
+# Move window to workspace
+bindsym $mod+Shift+1 move container to workspace number 1
+bindsym $mod+Shift+2 move container to workspace number 2
+bindsym $mod+Shift+3 move container to workspace number 3
+bindsym $mod+Shift+4 move container to workspace number 4
+bindsym $mod+Shift+5 move container to workspace number 5
+bindsym $mod+Shift+6 move container to workspace number 6
+bindsym $mod+Shift+7 move container to workspace number 7
+bindsym $mod+Shift+8 move container to workspace number 8
+bindsym $mod+Shift+9 move container to workspace number 9
+
+# Audio controls
+bindsym --locked XF86AudioRaiseVolume exec bunny-osd volume 10%+
+bindsym --locked XF86AudioLowerVolume exec bunny-osd volume 10%-
+bindsym --locked XF86AudioMute exec bunny-osd volume mute
+bindsym --locked XF86AudioMicMute exec bunny-osd mic mute
+
+# Media controls
+bindsym --locked XF86AudioPlay exec playerctl play-pause
+bindsym --locked XF86AudioPause exec playerctl play-pause
+bindsym --locked XF86AudioNext exec playerctl next
+bindsym --locked XF86AudioPrev exec playerctl previous
+
+# Brightness controls
+bindsym --locked XF86MonBrightnessUp exec bunny-osd brightness +10%
+bindsym --locked XF86MonBrightnessDown exec bunny-osd brightness 10%-
