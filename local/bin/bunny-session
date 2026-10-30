@@ -1,0 +1,26 @@
+#!/bin/bash
+set -euo pipefail
+
+usage() {
+  echo "Usage: bunny-session <quit|niri|sway|hyprland>" >&2
+  exit 1
+}
+
+[[ $# -eq 1 ]] || usage
+
+case $1 in
+  quit)
+    exec uwsm stop
+    ;;
+  niri | sway | hyprland)
+    # Nesting uwsm sessions breaks; the current one has to be stopped first.
+    if [[ -n ${WAYLAND_DISPLAY:-} ]]; then
+      echo "bunny-session: a Wayland session is running; run 'bunny-session quit' first" >&2
+      exit 1
+    fi
+    exec uwsm start -- "$1.desktop"
+    ;;
+  *)
+    usage
+    ;;
+esac
