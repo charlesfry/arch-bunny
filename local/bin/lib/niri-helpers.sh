@@ -6,7 +6,7 @@
 # each query function issues its own niri IPC request.
 
 # App launcher used by niri_focus_or_spawn; override before sourcing if needed
-NIRI_APP_LAUNCHER="${NIRI_APP_LAUNCHER:-uwsm-app}"
+NIRI_APP_LAUNCHER="${NIRI_APP_LAUNCHER:-bunny-app}"
 
 # -------------------------------------------------------------------
 # Snapshot

@@ -1,0 +1,12 @@
+#!/bin/bash
+
+# Run a command as a transient scope in app-graphical.slice. Replaces uwsm-app
+# without the resident daemon; the scope inherits environment and cwd.
+[[ "${1:-}" == "--" ]] && shift
+[[ $# -gt 0 ]] || { echo "usage: bunny-app [--] command [args...]" >&2; exit 2; }
+
+name=$(systemd-escape -- "$(basename -- "$1")")
+id=$(od -An -N4 -tx1 /dev/urandom | tr -d ' \n')
+
+exec systemd-run --user --scope --quiet --collect --same-dir \
+  --slice=app-graphical.slice --unit="app-bunny-$name-$id" -- "$@"
