@@ -5,6 +5,10 @@ hl.on("hyprland.start", function()
 end)
 
 hl.config({
+  animations = { enabled = false },
+})
+
+hl.config({
   input = {
     repeat_delay = 300,
     repeat_rate = 50,
@@ -18,6 +22,9 @@ hl.monitor({ output = "HDMI-A-1", mode = "1920x1080@60.000", position = "auto", 
 
 -- Terminal
 hl.bind(mod .. " + Return", hl.dsp.exec_cmd("bunny-launch-term-cwd"))
+
+-- App launcher
+hl.bind(mod .. " + space", hl.dsp.exec_cmd("fuzzel"))
 
 -- Window focus
 hl.bind(mod .. " + h", hl.dsp.focus({ direction = "left" }))
