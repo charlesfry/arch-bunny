@@ -15,12 +15,17 @@ session_locked() {
 
 bunny-cmd-lock
 
-for _ in {1..50}; do
+# swayidle gives no readiness signal, and a Lock signal sent before it
+# subscribes to logind is dropped. Resend it with a growing delay until the
+# session reports locked. Repeats are harmless because the lock screen launcher
+# takes a non-blocking flock.
+for delay in 0.1 0.2 0.4 0.8 1.6 2; do
+  sleep "$delay"
   if session_locked; then
     systemctl suspend
     exit
   fi
-  sleep 0.1
+  loginctl lock-session "$XDG_SESSION_ID"
 done
 
 exit 1
