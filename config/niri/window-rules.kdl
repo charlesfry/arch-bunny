@@ -12,6 +12,12 @@ window-rule {
 }
 
 window-rule {
+    match app-id="^brave-messages"
+    open-maximized true
+    open-floating false
+}
+
+window-rule {
     match app-id="^discord$"
     open-maximized true
     open-floating false
