@@ -24,7 +24,17 @@ vim.keymap.set("n", "-", "<C-x>", { desc = "Decrement number" })
 vim.keymap.set("n", "<C-a>", "gg<S-v>G", { desc = "Select all" })
 
 -- Misc
-vim.keymap.set("n", "<leader>gw", "<cmd>g/^\\s*#/normal! gww<CR>``", { desc = "Reflow # comment lines" })
+
+-- Run <leader>gw on all comments
+vim.keymap.set("n", "<leader>gw", function()
+  local leader = vim.trim(vim.bo.commentstring:match("^(.-)%%s") or "")
+  if leader == "" then
+    return vim.notify("No commentstring for this filetype", vim.log.levels.WARN)
+  end
+  vim.cmd("g/^\\s*" .. vim.fn.escape(leader, [[\/.*$^~[]]) .. "/normal! gww")
+  vim.cmd("normal! ``")
+end, { desc = "Reflow comment lines (per filetype)" })
+
 -- <leader>ts is used by onedark to toggle the theme
 vim.keymap.set("n", "<leader>dl", "d$")
 vim.keymap.set("n", "<leader>h", function()
@@ -60,5 +70,15 @@ vim.keymap.set("n", "<leader>pi", function()
     vim.api.nvim_buf_set_lines(0, line_nr - 1, line_nr, false, { line .. "  # pyright: ignore" })
   end
 end, { silent = true, desc = "Append # pyright: ignore to current line" })
-vim.keymap.set("n", "<leader>fi", LazyVim.pick("files", { hidden = true, ignored = true }), { desc = "Find Files incl. hidden+ignored (Root Dir)" })
-vim.keymap.set("n", "<leader>fh", LazyVim.pick("files", { hidden = true }), { desc = "Find Files incl. hidden (Root Dir)" })
+vim.keymap.set(
+  "n",
+  "<leader>fi",
+  LazyVim.pick("files", { hidden = true, ignored = true }),
+  { desc = "Find Files incl. hidden+ignored (Root Dir)" }
+)
+vim.keymap.set(
+  "n",
+  "<leader>fh",
+  LazyVim.pick("files", { hidden = true }),
+  { desc = "Find Files incl. hidden (Root Dir)" }
+)
