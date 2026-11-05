@@ -1,21 +1,26 @@
 -- Autocmds are automatically loaded on the VeryLazy event
--- Default autocmds that are always set: https://github.com/LazyVim/LazyVim/blob/main/lua/lazyvim/config/autocmds.lua
+-- Default autocmds that are always set:
+-- https://github.com/LazyVim/LazyVim/blob/main/lua/lazyvim/config/autocmds.lua
 --
 -- Add any additional autocmds here
 -- with `vim.api.nvim_create_autocmd`
 --
--- Or remove existing autocmds by their group name (which is prefixed with `lazyvim_` for the defaults)
--- e.g. vim.api.nvim_del_augroup_by_name("lazyvim_wrap_spell")
+-- Or remove existing autocmds by their group name (which is prefixed with
+-- `lazyvim_` for the defaults) e.g.
+-- vim.api.nvim_del_augroup_by_name("lazyvim_wrap_spell")
 
 -- gq on python imports: wrap `from x import (...)` one name per line.
 -- Expands the range to the whole statement (matching paren) before ruff runs.
+
 function _G.PyImportFormat()
   local buf = 0
   local first = vim.v.lnum
   local last = first + vim.v.count - 1
   local function depth_of(lines, depth)
     for _, l in ipairs(lines) do
-      for c in l:gmatch("[()]") do depth = depth + (c == "(" and 1 or -1) end
+      for c in l:gmatch("[()]") do
+        depth = depth + (c == "(" and 1 or -1)
+      end
     end
     return depth
   end
@@ -26,11 +31,22 @@ function _G.PyImportFormat()
   -- not an import: ruff formats just the gq lines, with the whole file as context
   local head = vim.api.nvim_buf_get_lines(buf, first - 1, first, false)[1]
   if not (head:match("^from%s") or head:match("^import%s")) then
+    -- jupytext notebooks are ft=markdown: ruff can't parse the whole buffer
+    if vim.bo.filetype ~= "python" then
+      return 1
+    end
     local range = vim.v.lnum .. "-" .. (vim.v.lnum + vim.v.count)
     local name = vim.api.nvim_buf_get_name(buf)
-    local out = vim.fn.systemlist({ "ruff", "format", "--quiet", "--range=" .. range, "--stdin-filename=" .. name, "-" },
-      vim.api.nvim_buf_get_lines(buf, 0, -1, false))
+    local out = vim.fn.systemlist(
+      { "ruff", "format", "--quiet", "--range=" .. range, "--stdin-filename=" .. name, "-" },
+      vim.api.nvim_buf_get_lines(buf, 0, -1, false)
+    )
     if vim.v.shell_error ~= 0 then
+      -- typing past textwidth calls formatexpr on every key; mid-edit code often
+      -- doesn't parse, so stay quiet and let vim's built-in wrap handle it
+      if vim.fn.mode():match("^i") then
+        return 1
+      end
       vim.notify("ruff failed:\n" .. table.concat(out, "\n"), vim.log.levels.WARN)
       return 0
     end
@@ -57,8 +73,11 @@ function _G.PyImportFormat()
 end
 
 vim.api.nvim_create_autocmd("FileType", {
-  pattern = "python",
-  callback = function()
+  pattern = { "python", "markdown" },
+  callback = function(ev)
+    if vim.bo.filetype == "markdown" and not ev.file:match("%.ipynb$") then
+      return
+    end
     vim.bo.formatexpr = "v:lua.PyImportFormat()"
   end,
 })

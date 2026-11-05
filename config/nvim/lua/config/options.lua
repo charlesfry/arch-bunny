@@ -19,4 +19,7 @@ vim.diagnostic.config({ jump = { float = true } })
 local nvim_py = vim.fn.expand("~/.venvs/neovim/bin/python")
 if vim.fn.executable(nvim_py) == 1 then
   vim.g.python3_host_prog = nvim_py
+  -- jupytext.nvim shells out to the `jupytext` CLI, which lives in this venv.
+  -- Appended so it never shadows conda/system tools.
+  vim.env.PATH = vim.env.PATH .. ":" .. vim.fn.fnamemodify(nvim_py, ":h")
 end
