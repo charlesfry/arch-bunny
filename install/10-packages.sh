@@ -91,7 +91,7 @@ write_managed_pacman_configuration() {
         next
       }
 
-      /^[[:space:]]*\[omarchy\][[:space:]]*$/ {
+      /^[[:space:]]*\[(omarchy|viacoffee)\][[:space:]]*$/ {
         skip_omarchy = 1
         next
       }
@@ -150,7 +150,7 @@ validate_pacman_configuration() {
     return 1
   }
 
-  for repository in core extra multilib omarchy; do
+  for repository in core extra multilib omarchy viacoffee; do
     count=$(grep -cx "$repository" <<< "$repositories" || true)
     if ((count != 1)); then
       error "Repository must be configured exactly once: $repository (found $count)"
@@ -168,6 +168,19 @@ validate_pacman_configuration() {
   for policy in PackageRequired PackageTrustedOnly DatabaseOptional DatabaseTrustedOnly; do
     if ! grep -qx "$policy" <<< "$omarchy_siglevel"; then
       error "Omarchy repository signature policy is missing: $policy"
+      return 1
+    fi
+  done
+
+  if [[ $(pacman-conf --repo viacoffee Server) != "https://pkgs.knight.sh/$(uname -m)" ]]; then
+    error "viacoffee repository server does not match the managed configuration"
+    return 1
+  fi
+  local viacoffee_siglevel
+  viacoffee_siglevel=$(pacman-conf --repo viacoffee SigLevel)
+  for policy in PackageRequired PackageTrustedOnly DatabaseRequired DatabaseTrustedOnly; do
+    if ! grep -qx "$policy" <<< "$viacoffee_siglevel"; then
+      error "viacoffee repository signature policy is missing: $policy"
       return 1
     fi
   done
@@ -199,10 +212,28 @@ trust_omarchy_signing_key() {
   success "Omarchy signing key trusted: $OMARCHY_SIGNING_KEY"
 }
 
+# https://pkgs.knight.sh/repository-signing-key.fingerprint
+VIACOFFEE_SIGNING_KEY=${VIACOFFEE_SIGNING_KEY:-9CC8CB3C0CF8A1EFFDC71BEA9D7919B8447107C9}
+
+trust_viacoffee_signing_key() (
+  local key_file fingerprint
+  key_file=$(mktemp)
+  trap 'rm -f "$key_file"' EXIT
+  curl -fsSL https://pkgs.knight.sh/repository-signing-key.asc -o "$key_file" || return 1
+  fingerprint=$(gpg --show-keys --with-colons "$key_file" | awk -F: '$1 == "pub" { primary = 1; next } primary && $1 == "fpr" { print $10; primary = 0 }') || return 1
+  if [[ $fingerprint != "$VIACOFFEE_SIGNING_KEY" ]]; then
+    error "viacoffee signing key fingerprint does not match"
+    return 1
+  fi
+  run_logged "Importing viacoffee signing key" sudo pacman-key --add "$key_file"
+  run_logged "Locally signing viacoffee signing key" sudo pacman-key --lsign-key "$VIACOFFEE_SIGNING_KEY"
+)
+
 preserve_original_pacman_configuration
 write_managed_pacman_configuration
 validate_pacman_configuration
 trust_omarchy_signing_key
+trust_viacoffee_signing_key
 
 # A full kernel upgrade removes the running kernel's module tree. Keep the
 # netfilter modules needed by UFW resident so the firewall can be configured

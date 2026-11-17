@@ -256,7 +256,7 @@ main() {
   fi
 
   repositories=$(pacman-conf --repo-list 2>/dev/null || true)
-  for repository in core extra multilib omarchy; do
+  for repository in core extra multilib omarchy viacoffee; do
     local repository_count
     repository_count=$(grep -cx "$repository" <<< "$repositories" || true)
     if [[ $repository_count == 1 ]]; then
@@ -288,6 +288,21 @@ main() {
       pass "Omarchy signature policy includes: $policy"
     else
       fail "Omarchy signature policy includes: $policy"
+    fi
+  done
+
+  if [[ $(pacman-conf --repo viacoffee Server 2>/dev/null) == "https://pkgs.knight.sh/$(uname -m)" ]]; then
+    pass "viacoffee repository uses the expected server"
+  else
+    fail "viacoffee repository uses the expected server"
+  fi
+  local viacoffee_siglevel
+  viacoffee_siglevel=$(pacman-conf --repo viacoffee SigLevel 2>/dev/null || true)
+  for policy in PackageRequired PackageTrustedOnly DatabaseRequired DatabaseTrustedOnly; do
+    if grep -qx "$policy" <<< "$viacoffee_siglevel"; then
+      pass "viacoffee signature policy includes: $policy"
+    else
+      fail "viacoffee signature policy includes: $policy"
     fi
   done
 
