@@ -1,0 +1,24 @@
+#!/bin/bash
+# Usage: bunny-radio <wifi|bluetooth> <toggle|launch>
+
+case "$1" in
+  wifi)      tui=impala ;;
+  bluetooth) tui=bluetui ;;
+  *) echo "usage: ${0##*/} <wifi|bluetooth> <toggle|launch>" >&2; exit 2 ;;
+esac
+
+case "$2" in
+  toggle)
+    if rfkill list "$1" | grep -q "Soft blocked: yes"; then
+      rfkill unblock "$1"
+    else
+      rfkill block "$1"
+    fi
+    ;;
+  launch)
+    # Unblock first in case the radio is blocked.
+    rfkill unblock "$1"
+    bunny-launch-term-float "$tui"
+    ;;
+  *) echo "usage: ${0##*/} <wifi|bluetooth> <toggle|launch>" >&2; exit 2 ;;
+esac

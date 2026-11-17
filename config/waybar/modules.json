@@ -87,7 +87,7 @@
     "tooltip-format-wifi": "{essid} ({signalStrength}%)  {bandwidthDownBits}↓ {bandwidthUpBits}↑",
     "tooltip-format-ethernet": "{ifname} 󰈀",
     "tooltip-format-disconnected": "Disconnected",
-    "on-click": "bunny-launch-wifi"
+    "on-click": "bunny-radio wifi launch"
   },
   "custom/weather": {
     "exec": "$HOME/.config/waybar/indicators/weather.sh",

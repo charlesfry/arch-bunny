@@ -18,6 +18,6 @@ options="Sound
 
 case $(bunny-launch-menu "" <<< "$options") in
   *Sound*)            bunny-launch-term-float wiremix ;;
-  *Wifi*)             bunny-launch-wifi ;;
-  *Bluetooth*)        bunny-launch-bluetooth ;;
+  *Wifi*)             bunny-radio wifi launch ;;
+  *Bluetooth*)        bunny-radio bluetooth launch ;;
 esac
