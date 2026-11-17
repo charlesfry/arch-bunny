@@ -353,7 +353,7 @@ Some actions have no keybinding and live in the bar instead: click the idle
 indicator for `bunny-toggle-idle`, the notification indicator for
 `bunny-donotdisturb`, the recording indicator for `bunny-cmd-screenrecord`
 (gpu-screen-recorder, toggles), the volume module to mute/unmute, the network
-module for `bunny-launch-wifi`, and the battery module for `bunny-menu power`.
+module for `bunny-radio wifi launch`, and the battery module for `bunny-menu power`.
 
 The bar also carries a column indicator strip
 (`niri-column-indicator`) and a weather module (see
