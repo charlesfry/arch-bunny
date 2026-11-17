@@ -9,23 +9,5 @@ XDG_SESSION_ID="${XDG_SESSION_ID:-$(loginctl show-session auto --property=Id --v
 : "${XDG_SESSION_ID:?could not determine the graphical session}"
 export XDG_SESSION_ID
 
-session_locked() {
-  [[ "$(loginctl show-session "$XDG_SESSION_ID" --property=LockedHint --value)" == "yes" ]]
-}
-
 bunny-cmd-lock
-
-# swayidle gives no readiness signal, and a Lock signal sent before it
-# subscribes to logind is dropped. Resend it with a growing delay until the
-# session reports locked. Repeats are harmless because the lock screen launcher
-# takes a non-blocking flock.
-for delay in 0.1 0.2 0.4 0.8 1.6 2; do
-  sleep "$delay"
-  if session_locked; then
-    systemctl suspend
-    exit
-  fi
-  loginctl lock-session "$XDG_SESSION_ID"
-done
-
-exit 1
+systemctl suspend

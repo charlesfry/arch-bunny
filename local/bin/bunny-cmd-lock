@@ -9,4 +9,15 @@ XDG_SESSION_ID="${XDG_SESSION_ID:-$(loginctl show-session auto --property=Id --v
 
 systemctl --user start swayidle.service
 signal_waybar "10" # signal waybar that swayidle is running
-loginctl lock-session "$XDG_SESSION_ID"
+# A newly started swayidle can miss Lock signals before subscribing to logind.
+# The launcher uses flock to discard requests while hyprlock is running.
+for delay in 0.1 0.2 0.4 0.8 1.6 2; do
+  loginctl lock-session "$XDG_SESSION_ID"
+  sleep "$delay"
+  if [[ "$(loginctl show-session "$XDG_SESSION_ID" --property=LockedHint --value)" == yes ]]; then
+    exit 0
+  fi
+done
+
+printf 'Could not confirm session lock\n' >&2
+exit 1
